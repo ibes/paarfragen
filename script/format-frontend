@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Description: Format all frontend/ source in place (Prettier).
+# Side-effects: WRITES — rewrites files under frontend/.
+set -euo pipefail
+cd "$(dirname "$0")/../frontend"
+exec npx prettier --write . "$@"

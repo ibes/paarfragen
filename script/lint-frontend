@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Description: Lint frontend/ (ESLint, eslint.config.js). Pass --fix to auto-fix safe issues.
+# Side-effects: read-only by default; WRITES if --fix is passed.
+set -euo pipefail
+cd "$(dirname "$0")/../frontend"
+exec npx eslint . "$@"

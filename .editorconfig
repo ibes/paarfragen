@@ -1,8 +1,9 @@
-# Editor defaults for files Mago does not format.
+# Editor defaults for files Mago/Prettier don't format.
 #
 # Canonical PHP style (api/src/, api/tests/): `script/format` / `bin/mago fmt`
-# per mago.toml. On conflict, Mago wins — run `script/format`, then
-# `script/check`. Do not use other PHP formatters on Mago-scanned paths.
+# per mago.toml. Canonical frontend/ style (ts/vue/css/…): `script/format-frontend`
+# / Prettier. On conflict, the formatter wins — run it, then `script/check`.
+# Do not use another formatter on either tool's scanned paths.
 
 root = true
 

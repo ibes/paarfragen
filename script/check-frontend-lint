@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Description: Prettier format check + ESLint (eslint.config.js), folded into one {status, violations, total, summary} report.
+# Side-effects: none (read-only).
+set -Eeuo pipefail
+trap 'exit 2' ERR
+cd "$(dirname "$0")/../frontend"
+
+# shellcheck source=script/lib/check-contract.sh
+source ../script/lib/check-contract.sh
+
+violations='[]'
+add() { violations=$(jq --argjson v "$1" '. + $v' <<<"$violations"); }
+
+if ! npx prettier --check . >/dev/null 2>&1; then
+    files=$(npx prettier --list-different . 2>/dev/null || true)
+    add "$(jq -R --arg prefix "frontend/" 'select(length > 0) | {file: ($prefix + .), line: 1, message: "not formatted — run script/format-frontend"}' <<<"$files" | jq -s .)"
+fi
+
+rc=0
+out=$(npx eslint --format json . 2>/dev/null) || rc=$?
+case $rc in
+    0) ;;
+    1)
+        add "$(jq --arg prefix "frontend/" '
+            [.[] | .filePath as $f | .messages[] | select(.severity == 2) | {
+                file: ($prefix + ($f | sub("^.*/frontend/"; ""))),
+                line,
+                message: (.message + (if .ruleId then " (" + .ruleId + ")" else "" end))
+            }]' <<<"$out")"
+        ;;
+    *) exit 2 ;;
+esac
+
+if [[ $(jq 'length' <<<"$violations") -eq 0 ]]; then
+    contract_emit clean "$violations" "Prettier and ESLint are both clean"
+fi
+contract_emit red "$violations"

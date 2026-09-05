@@ -576,3 +576,48 @@ does. Structural/perimeter guard rules from the previous entry stay as
 strict as before — architecture boundaries drawn before any real code
 exists are exactly the kind of standard worth setting high per the
 human's own framing ("mit leerem Repo ist es leichter").
+
+## 2026-09-05 — ESLint + Prettier for frontend/, calibrated the same way as Mago
+
+`frontend/eslint.config.js` (flat config): `@eslint/js` recommended +
+`typescript-eslint` `recommended` + `eslint-plugin-vue`'s
+`flat/recommended`, `eslint-config-prettier` last to disable any
+stylistic rule Prettier already owns. `no-console` raised to error —
+the JS analogue of Mago's `no-debug-symbols`. `script/check-frontend-lint`
+folds Prettier's `--list-different` + ESLint's `--format json` into the
+same `{status, violations, total, summary}` contract used everywhere
+else; `script/format-frontend`/`script/lint-frontend` are the
+write-capable counterparts. `.editorconfig`'s header now credits
+Prettier alongside Mago.
+
+**Tried `typescript-eslint`'s `recommendedTypeChecked` first, dropped
+it:** plain typescript-eslint doesn't resolve `.vue` SFC types the way
+`vue-tsc`'s own language-service plugin does — `main.ts`'s
+`createApp(App)` came back "unsafe argument of type error" on the very
+first real file, a tool-interop gap, not a real bug. `vue-tsc`
+(`script/check-frontend-types`) already gives full type-safety on real
+code, so this stays syntactic-only rather than fighting that interop
+for marginal extra coverage — same "strict as useful" call as the Mago
+recalibration above, just found on the frontend side this time.
+
+**Bug caught while testing the red path (worth noting — a real bash
+footgun):** `check-frontend-lint`'s first draft parsed Prettier's own
+`--check` text output, which puts a `[warn] Code style issues found in
+the above file...` summary line through the exact same prefix as a
+per-file line — it got parsed as a fake "file". Fixed by switching to
+`--list-different`, which prints only file paths, nothing else.
+Separately, that same draft made script/check-frontend-lint report
+"broken" (exit 2) on every real violation, not "red": bash's ERR trap
+fires on a failing command inside a plain `var=$(cmd)` assignment even
+though `set -e` itself is documented to exempt that exact form — an
+inconsistency between `errexit` and the `ERR` trap that isn't obvious
+from either one's docs. Every other `check-*` script already guards
+this correctly (`|| true` / `|| rc=$?` on anything expected to
+sometimes fail); this one didn't, until the red-path test caught it.
+Re-audited every other `check-*`'s `var=$(...)` assignments against
+this exact pattern before calling it done — all already correct.
+
+Also ran `script/format-frontend` once, immediately after: `App.vue`,
+`main.ts`, `style.css`, `vite.config.ts` had never seen Prettier before
+(quotes, semicolons). Reformatted now, while it's four small files,
+rather than letting the diff grow.
