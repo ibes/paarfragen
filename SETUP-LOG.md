@@ -552,3 +552,27 @@ adaptation needed beyond the commit message. Verified end-to-end: a
 script missing its header, staged and committed, was blocked with the
 exact check-script-integrity violation before the hook was removed
 again for the real commit.
+
+## 2026-09-05 — Recalibrated Mago: "as strict as useful", not "as strict as possible"
+
+`script/check-mago` now gates lint/analyze at `--minimum-fail-level=warning`
+instead of `note`; `mago.toml` explicitly re-elevates `no-debug-symbols`
+and `invalid-open-tag` to `error` since Mago itself defaults those two to
+Note despite them being real bugs, not style. Guard is untouched — every
+guard finding is architectural, there's no cosmetic tier to filter there.
+
+**Why:** the human pushed back on "as strict as possible" — the goal is
+keeping agents on a healthy path and giving new code a clear standard to
+match, not maximizing friction. Checked empirically before changing
+anything: ~40% of Mago's default-enabled rules sit at Note/Help
+(`no-redundant-parentheses`, `no-redundant-final`, naming-casing
+nitpicks, …) — real cleanup suggestions, but hard-blocking a commit on
+them added friction without matching value, especially since
+`script/format`/`script/lint --fix` already clears most of that tier in
+one command. Verified the new threshold still catches everything that
+matters: a `var_dump()` left in code and a missing type hint both still
+fail `script/check-mago`; a purely cosmetic Note-level finding no longer
+does. Structural/perimeter guard rules from the previous entry stay as
+strict as before — architecture boundaries drawn before any real code
+exists are exactly the kind of standard worth setting high per the
+human's own framing ("mit leerem Repo ist es leichter").

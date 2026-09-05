@@ -33,9 +33,15 @@ if ! bin/mago format --check >/dev/null 2>&1; then
     add "$(jq -R '{file: ., line: 1, message: "not formatted — run script/format"}' <<<"$files" | jq -s .)"
 fi
 
-for cmd in lint analyze guard; do
+# lint/analyze gate at warning+, not Mago's full note/help tier — see
+# mago.toml's [linter.rules] comment for why (and for the two rules pulled
+# back up to error regardless). guard has no cosmetic tier to filter: every
+# perimeter/structural violation it can report is architectural, so it
+# keeps Mago's own default (error).
+for cmd_and_level in "lint warning" "analyze warning" "guard error"; do
+    read -r cmd level <<<"$cmd_and_level"
     rc=0
-    out=$(bin/mago "$cmd" --reporting-format=json --minimum-fail-level=note 2>/dev/null) || rc=$?
+    out=$(bin/mago "$cmd" --reporting-format=json --minimum-fail-level="$level" 2>/dev/null) || rc=$?
     case $rc in
         0) ;;
         1) add "$(mago_issues_to_violations <<<"$out")" ;;

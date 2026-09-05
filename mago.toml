@@ -12,6 +12,17 @@ includes = ["api/vendor"]
 [linter]
 integrations = ["php-unit", "tempest"]
 
+[linter.rules]
+# script/check-mago gates at --minimum-fail-level=warning, not Mago's full
+# Note/Help tier — most of that tier is Consistency/Redundancy style nitpicks
+# (verified: ~40% of default rules), not worth hard-blocking a commit over
+# when `script/format`/`script/lint --fix` clears most of it in one command
+# anyway. These two are the exception: real correctness/security bugs that
+# Mago itself defaults to a low severity for, elevated so the warning
+# threshold still catches them.
+no-debug-symbols = { level = "error" }  # var_dump/dd left in committed code
+invalid-open-tag = { level = "error" }  # malformed open tag, not a style choice
+
 [analyzer]
 excludes = ["api/tests/**/*.php"]
 check-missing-type-hints = true
