@@ -335,3 +335,41 @@ mirror substituted, no `--no-check-certificate`-style bypass) and
 stopped to ask, per this task's own instruction to check rather than
 self-diagnose when a network block repeats. `script/qa` was not run —
 the build still isn't green.
+
+## 2026-09-05 — Checked every remaining host the pipeline needs, not just the one that failed
+
+Asked to verify whether more domains would need allowlisting before
+going back to the human a third time. Rather than fixing one blocker
+and waiting to discover the next by re-running the build, walked the
+whole `script/qa` chain (both Dockerfile apt stages, `composer
+install`, `npm install`) and tested every external host it touches.
+
+**Method:** a bare TLS probe (`openssl s_client` + `x509 -noout
+-issuer`) only proves a host is being intercepted by this
+environment's egress gateway (`O=Anthropic, CN=Egress Gateway SDS
+Issuing CA (production)`) — it can't distinguish "intercepted and
+allowed through" from "intercepted and blocked," since both look like
+a MITM'd cert to a container that doesn't trust that CA. Fixed that by
+mounting this session's own trusted bundle
+(`-v /root/.ccr/ca-bundle.crt:/tmp/ca.crt:ro`) into a throwaway
+`php:8.5-cli-trixie` container and `curl --cacert`-ing each host's
+*real* endpoint (not `/`, which 404s harmlessly on API-only hosts
+regardless of policy — e.g. `repo.packagist.org/`) — a genuine 200/302
+with real payload means allowed, a 403 means blocked.
+
+**Found a second blocked host that hadn't failed yet:**
+`deb.nodesource.com` (the Dockerfile's Node 22 apt source, the stage
+right after the PHP-extension one). Would have been next session's
+"new blocker found one layer in" if not caught now. Everything else
+the pipeline needs came back genuinely reachable: `repo.packagist.org`
+(real `p2/*.json` metadata), `api.github.com` (this lock file's
+packages all dist from GitHub zipballs, not Packagist mirrors — real
+302 to `codeload.github.com`, which itself returns real content),
+`github.com` (git-upload-pack works, matches this session's own
+already-working git push/fetch), `registry.npmjs.org` (real package
+metadata).
+
+**Why record the negative results too, not just the blocker:** so the
+next session doesn't re-derive "does packagist/npm/github work" from
+scratch, and so the human adding `deb.debian.org` this time also adds
+`deb.nodesource.com` in the same pass instead of a third round-trip.

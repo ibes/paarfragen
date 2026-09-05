@@ -27,21 +27,49 @@ Issuing CA (production)` for `CN=*.debian.org` — the same interception
 pattern that produced the earlier Docker Hub 403, just gating a
 different domain now that the first one is open.
 
-**Fix (needs a human, same mechanism as last time):** add
-`deb.debian.org` to this environment's Network access settings
-(Custom level), then start a **new session** — network policy is
-fixed at session start. **First thing to do in that new session:**
-run `script/test-api` (or `docker compose build api` directly) and
-confirm the `apt-get update` step now succeeds — don't assume it does.
-If it still 403s on `deb.debian.org`, the settings change didn't take
-(not saved, not yet propagated). If it fails on a *different* host
-than `deb.debian.org`, this same pattern is repeating — check which
-host via the same certificate-issuer probe used here (`openssl
-s_client -connect <host>:443 -servername <host> | openssl x509 -noout
--issuer -subject`) rather than guessing, then report it the same way
-this entry does. If it fails for a reason unrelated to network egress,
-see "Docker for `api/`" below for what to check first (extension
-names, `trixie` package naming).
+**Checked ahead, rather than finding this one blocker at a time:**
+probed every external host the full `script/qa` pipeline touches
+(Dockerfile stages + `composer install` + `npm install`), by mounting
+this session's own trusted CA (`/root/.ccr/ca-bundle.crt`) into a
+throwaway container and hitting each host's real endpoint (not just
+`/`, which can 404 harmlessly on API-only hosts) — a 200/302 with real
+content means the egress gateway is passing it through; a 403 with the
+gateway's own intercepted cert (`O=Anthropic, CN=Egress Gateway SDS
+Issuing CA (production)`) means it's still blocked. Two hosts blocked,
+not one:
+
+| Host | Used for | Status |
+|---|---|---|
+| `production.cloudfront.docker.com` | Docker Hub image pulls | **fixed** (this session) |
+| `deb.debian.org` | apt (`libicu-dev` etc., PHP extension build deps) | **blocked** — 403 |
+| `deb.nodesource.com` | Node 22 apt source (`.devcontainer/Dockerfile`'s node stage, runs right after the PHP‑extensions stage) | **blocked** — 403 |
+| `repo.packagist.org` | composer package metadata | reachable — real `200` |
+| `api.github.com` / `codeload.github.com` | composer dist zipballs (this lock file's packages all dist from GitHub, not Packagist mirrors) | reachable — `302` → `200` |
+| `github.com` | composer VCS fallback, this repo's own git remote | reachable — real `200` |
+| `registry.npmjs.org` | `npm install` (frontend deps + `@ast-grep/cli`) | reachable — real `200` |
+
+**Fix (needs a human, same mechanism as last time):** add both
+`deb.debian.org` **and** `deb.nodesource.com` to this environment's
+Network access settings (Custom level) in the same pass, then start a
+**new session** — network policy is fixed at session start. Adding
+only one would just trade today's blocker for tomorrow's, since the
+Dockerfile hits `deb.debian.org` first and `deb.nodesource.com`
+immediately after.
+
+**First thing to do in that new session:** run `script/test-api` (or
+`docker compose build api` directly) and confirm the build gets past
+*both* apt stages — don't assume it does. If it still 403s on either
+host, the settings change didn't take (not saved, not yet propagated).
+If it fails on a host not in the table above, this same pattern is
+repeating — check which host via the same certificate-issuer probe
+used here (`openssl s_client -connect <host>:443 -servername <host> |
+openssl x509 -noout -issuer -subject`, or for a real pass/fail
+signal rather than just "is it intercepted", mount
+`/root/.ccr/ca-bundle.crt` into a throwaway container and `curl
+--cacert` a real endpoint on that host) rather than guessing, then
+report it the same way this entry does. If it fails for a reason
+unrelated to network egress, see "Docker for `api/`" below for what to
+check first (extension names, `trixie` package naming).
 
 ## Phase
 
@@ -121,8 +149,15 @@ before but still not green end-to-end. What's confirmed:
   pulls inside `docker compose build api`, all succeed.
 - **Blocked on:** the Dockerfile's `apt-get update` (installing PHP
   extension build deps) 403s on `deb.debian.org` — a *different* host
-  than the Docker CDN one, same environment-allowlist root cause. See
-  "Right now" above for the fix and what only a human can do.
+  than the Docker CDN one, same environment-allowlist root cause. A
+  second blocked host, `deb.nodesource.com` (Node 22 install, the next
+  Dockerfile stage), was found by checking ahead rather than waiting
+  to hit it in a later session — see "Right now" above for the fix and
+  what only a human can do. Everything past the apt stages that the
+  full pipeline needs — `repo.packagist.org`, `api.github.com` /
+  `codeload.github.com`, `github.com`, `registry.npmjs.org` — was
+  probed directly and is already reachable, so no further host is
+  expected to block once these two are added.
 - `docker-compose.yml` parses correctly (`docker compose config`); the
   Dockerfile's package/extension list is grounded in real sources
   (Tempest's actual `composer.json` requirements, Docker Hub's real
