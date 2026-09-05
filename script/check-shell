@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Description: shellcheck gate over every regular file directly under script/, at --severity=warning.
+# Side-effects: none (read-only).
+set -Eeuo pipefail
+trap 'exit 2' ERR
+cd "$(dirname "$0")/.."
+
+# shellcheck source=script/lib/check-contract.sh
+source script/lib/check-contract.sh
+
+targets=()
+for f in script/*; do
+    [[ -f "$f" ]] || continue
+    targets+=("$f")
+done
+
+summary="no shellcheck warnings at --severity=warning under script/"
+if (( ${#targets[@]} == 0 )); then
+    contract_emit clean '[]' "$summary"
+fi
+
+# Already filtered to --severity=warning by the flag: exit 0 means only
+# style/info findings exist, 1 means warning+ was found, anything else
+# means shellcheck itself is broken (falls through to the ERR trap).
+rc=0
+raw=$(shellcheck -x --severity=warning --format=json1 "${targets[@]}") || rc=$?
+
+case $rc in
+    0) contract_emit clean '[]' "$summary" ;;
+    1)
+        violations=$(jq '[.comments[] | {file, line, message: ("SC" + (.code|tostring) + ": " + .message)}]' <<<"$raw")
+        contract_emit red "$violations"
+        ;;
+    *) exit 2 ;;
+esac
