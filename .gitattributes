@@ -1,0 +1,15 @@
+# Line endings — align with .editorconfig (LF). Mago formats PHP in api/src/
+# and api/tests/.
+* text=auto eol=lf
+
+*.php text
+*.sh text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary

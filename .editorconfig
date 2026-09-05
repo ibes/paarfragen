@@ -1,0 +1,28 @@
+# Editor defaults for files Mago does not format.
+#
+# Canonical PHP style (api/src/, api/tests/): `script/format` / `bin/mago fmt`
+# per mago.toml. On conflict, Mago wins — run `script/format`, then
+# `script/check`. Do not use other PHP formatters on Mago-scanned paths.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.php]
+indent_style = space
+indent_size = 4
+
+[*.{md,json,yml,yaml,css,ts,vue}]
+indent_style = space
+indent_size = 2
+
+[*.sh]
+indent_style = space
+indent_size = 4
+
+[Makefile]
+indent_style = tab
