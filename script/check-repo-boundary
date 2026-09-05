@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Description: Verify no secrets or real-data files are tracked by git — .env files (except .env.example), database files, anything under data/.
+# Side-effects: none (read-only).
+set -Eeuo pipefail
+trap 'exit 2' ERR
+cd "$(dirname "$0")/.."
+
+# shellcheck source=script/lib/check-contract.sh
+source script/lib/check-contract.sh
+
+# Unguarded on purpose: if git itself fails, this check is broken (2), not clean.
+tracked=$(git ls-files)
+
+offenders=$(grep -E '(^|/)\.env(\..*)?$|\.(db|sqlite3?)$|^data/' <<<"$tracked" \
+    | grep -vE '(^|/)\.env\.example$' || true)
+
+if [[ -z "$offenders" ]]; then
+    contract_emit clean '[]' "no secrets or data files tracked by git"
+fi
+
+violations=$(jq -R '{file: ., line: 1, message: "tracked file looks like a secret or real-data file — belongs in a gitignored location"}' <<<"$offenders" | jq -s .)
+contract_emit red "$violations"
