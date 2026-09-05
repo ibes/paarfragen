@@ -118,3 +118,20 @@ specs are prose, not schemas) and is cheaper to keep "fluid, revisable"
 the way the source vision doc explicitly wants exploration mode to be.
 Revisit as OpenAPI later if codegen (TS types, request validation)
 becomes worth the added rigor.
+
+## 2026-09-05 — Tempest's TypeScript generation documented, not wired up
+
+Confirmed against Tempest's own docs/source (cloned `tempest-framework`
+to check, not guessed): `#[Tempest\Generation\TypeScript\AsType]` +
+`generate:typescript-types` generates `.ts`/`.d.ts` from PHP DTOs/enums;
+`tempest/generation` is already pulled in by `tempest/framework` itself,
+no new composer dependency. Marked experimental by Tempest. Documented
+the mechanism and its hexagonal-layout implication (`#[AsType]` classes
+must live in `src/Infrastructure`, per `CLAUDE.md`) in `specs/api.md`.
+
+**Deliberately not decided yet:** where `generate:typescript-types`
+should write its output (a directory tree straight into
+`frontend/src/...` vs. a single `types.d.ts` in `api/` referenced
+across the sibling-folder boundary). Asked the human directly; answer
+was to defer until real DTOs exist to generate from, rather than commit
+to a directory layout with nothing to test it against yet.

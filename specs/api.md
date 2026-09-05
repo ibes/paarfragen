@@ -125,6 +125,40 @@ idempotency shape as above.
 
 **200:** empty body (or `{}` — same open item as above).
 
+## Keeping frontend types in sync: Tempest's TypeScript generation
+
+Tempest can generate TypeScript definitions from PHP classes — no extra
+dependency needed, `tempest/generation` is already pulled in by
+`tempest/framework` itself. Mechanism (confirmed against Tempest's own
+docs/source, not guessed):
+
+- Mark a PHP class `#[Tempest\Generation\TypeScript\AsType]`; enums are
+  picked up automatically, no attribute needed.
+- Run `generate:typescript-types` (a Tempest console command — wire it
+  through `script/tempest` once that script exists, per the
+  scripts-first rule in `CLAUDE.md`).
+- Output location is configurable via a `typescript.config.php`: either
+  one `types.d.ts` file (default) or a directory tree with one `.ts`
+  file per PHP namespace.
+- Tempest's own docs mark this feature **experimental** — the API may
+  still change in a minor version.
+
+**Where this fits our hexagonal layout:** `#[AsType]`-marked classes are
+Tempest code, so per `CLAUDE.md` they can only live in
+`src/Infrastructure` — meaning dedicated request/response DTOs mirroring
+the shapes above, not the Domain entities themselves passed straight
+through.
+
+**Not wired up yet, on purpose:** there are no DTOs to generate from —
+no Infrastructure code exists (see `STATUS.md`). Two things stay open
+until real DTOs exist and get built against a spec:
+- **Output location** — a directory tree written straight into
+  `frontend/src/...`, vs. a single `types.d.ts` kept in `api/` that
+  `frontend/`'s `tsconfig.json` references across the sibling-folder
+  boundary. Explicitly deferred rather than picked now.
+- Can't be run/tested in this dev sandbox either way — same PHP ^8.5
+  gap as the rest of `api/` (see `STATUS.md` § Known quirks).
+
 ## Open items for whoever builds against this next
 
 - Exact 4xx status codes per failure case (missing `deck_id`, unknown

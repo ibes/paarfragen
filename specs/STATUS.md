@@ -42,6 +42,9 @@ assume the vision doc is ready to build as-is.
 
 ## Open decisions (not yet made — ask before assuming)
 
+- **Where `generate:typescript-types` (Tempest → TS type generation,
+  see `specs/api.md`) writes its output.** Deferred until real
+  Infrastructure DTOs exist to generate from.
 - **Auth model** for two people answering the same question set
   together. The vision doc proposes a hardcoded, opaque `deck_id` bearer
   token (no login) for its exploration stage — not yet confirmed for
