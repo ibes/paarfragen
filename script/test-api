@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Description: Run the PHP test suite only (api/) — phpunit, nothing frontend.
+# Side-effects: WRITES api/vendor/ if dependencies changed since the last install; none on tracked source otherwise.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+(cd api && composer install --no-interaction --quiet)
+(cd api && vendor/bin/phpunit)

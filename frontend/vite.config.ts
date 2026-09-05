@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -19,4 +20,9 @@ export default defineConfig({
       },
     }),
   ],
+  test: {
+    environment: 'jsdom',
+    // No tests exist yet (see specs/STATUS.md) — don't fail the gate on that.
+    passWithNoTests: true,
+  },
 })

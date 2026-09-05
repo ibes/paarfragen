@@ -17,7 +17,9 @@ app serving both API and server-rendered views (as `emsig` does).
 native cross-platform shell (e.g. Capacitor) later, without the API
 changing. Coupling them into one framework's request/view cycle (like
 emsig's Tempest+Vite setup) would make that split harder later, not
-easier.
+easier. Also deliberate: it keeps the two test suites — phpunit for
+`api/`, a JS/TS runner for `frontend/` — fully separate, each runnable
+(and green/red) on its own, not interleaved in one framework's test run.
 
 ## 2026-09-05 — `api/` hexagonal skeleton, no web framework picked yet
 
@@ -81,3 +83,19 @@ here runs purely as a JSON API (no views, no `vite-plugin-tempest`) — the
 "couple frontend+backend into one Tempest app like emsig" alternative
 was already rejected in the split decision above, and picking Tempest
 doesn't change that reasoning.
+
+## 2026-09-05 — `script/test-api` + `script/test-frontend` split out of `script/qa`
+
+Added vitest + jsdom to `frontend/` (`npm run test`, `vite.config.ts`'s
+`test` block, `passWithNoTests: true` since no tests exist yet — mirrors
+phpunit's own "No tests executed!"-but-exit-0 behavior on an empty
+suite). Split the two test runs into their own scripts;
+`script/qa` now just calls both plus the frontend build, instead of
+inlining everything itself.
+
+**Why:** explicit goal — being able to run and reason about the PHP
+suite and the JS/TS suite separately, not only as one bundled gate. The
+directory split already kept the two dependency graphs apart; this
+makes the *test invocation* independently runnable too
+(`script/test-api` alone, `script/test-frontend` alone), not just the
+source layout.

@@ -1,17 +1,14 @@
 #!/usr/bin/env bash
-# Description: Local gate — API test suite (phpunit) + frontend typecheck and build.
+# Description: Local gate — runs script/test-api and script/test-frontend, then the frontend build.
 # Side-effects: WRITES api/vendor/ or frontend/node_modules/ if dependencies changed since the last install; none on tracked source otherwise.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "== api: composer install =="
-(cd api && composer install --no-interaction --quiet)
+echo "== api tests =="
+script/test-api
 
-echo "== api: phpunit =="
-(cd api && vendor/bin/phpunit)
-
-echo "== frontend: npm install =="
-(cd frontend && npm install --no-audit --no-fund)
+echo "== frontend tests =="
+script/test-frontend
 
 echo "== frontend: typecheck + build =="
 (cd frontend && npm run build)

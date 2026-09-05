@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Description: Run the JS/TS test suite only (frontend/) — vitest, nothing PHP.
+# Side-effects: WRITES frontend/node_modules/ if dependencies changed since the last install; none on tracked source otherwise.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+(cd frontend && npm install --no-audit --no-fund)
+(cd frontend && npm run test)
