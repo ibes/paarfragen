@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Description: Dev setup — build the api/ container and install API and frontend dependencies. Safe to re-run.
-# Side-effects: WRITES api/vendor/, frontend/node_modules/; builds/pulls the api/ Docker image.
+# Description: Dev setup — build the api/ container, install API and frontend dependencies, fetch Mago. Safe to re-run.
+# Side-effects: WRITES api/vendor/, frontend/node_modules/, bin/mago; builds/pulls the api/ Docker image.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -9,3 +9,7 @@ script/lib/api-php composer install --no-interaction
 
 echo "Installing frontend dependencies (npm)..."
 (cd frontend && npm install)
+
+echo "Fetching Mago (formatter/linter/analyzer/guard)..."
+script/lib/mago-install
+bin/mago --version

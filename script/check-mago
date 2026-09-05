@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Description: Mago — format check + lint + analyze + hexagonal guard (mago.toml), folded into one {status, violations, total, summary} report.
+# Side-effects: none (read-only), beyond downloading bin/mago on first run if missing.
+set -Eeuo pipefail
+trap 'exit 2' ERR
+cd "$(dirname "$0")/.."
+
+# shellcheck source=script/lib/check-contract.sh
+source script/lib/check-contract.sh
+
+script/lib/mago-install
+
+violations='[]'
+add() { violations=$(jq --argjson v "$1" '. + $v' <<<"$violations"); }
+
+# mago's own JSON shape per issue: {message, annotations: [{span: {file_id:
+# {name}, start: {line}}}]}. Reshaped here into this contract's {file, line,
+# message} — annotations can be empty, so both fields fall back rather than
+# erroring.
+mago_issues_to_violations() {
+    jq '[.issues[]? | {
+        file: (.annotations[0].span.file_id.name // "?"),
+        line: (.annotations[0].span.start.line // 1),
+        message: .message
+    }]'
+}
+
+# format --check prints no structured output at all — list the files that
+# would change via --dry-run's diff headers instead of just saying "some
+# file, somewhere" failed.
+if ! bin/mago format --check >/dev/null 2>&1; then
+    files=$(bin/mago format --dry-run 2>&1 | grep -oP "(?<=^diff of ')[^']+" || true)
+    add "$(jq -R '{file: ., line: 1, message: "not formatted — run script/format"}' <<<"$files" | jq -s .)"
+fi
+
+for cmd in lint analyze guard; do
+    rc=0
+    out=$(bin/mago "$cmd" --reporting-format=json --minimum-fail-level=note 2>/dev/null) || rc=$?
+    case $rc in
+        0) ;;
+        1) add "$(mago_issues_to_violations <<<"$out")" ;;
+        *) exit 2 ;;
+    esac
+done
+
+if [[ $(jq 'length' <<<"$violations") -eq 0 ]]; then
+    contract_emit clean "$violations" "format, lint, analyze and the hexagonal guard are all clean"
+fi
+contract_emit red "$violations"

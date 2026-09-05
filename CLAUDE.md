@@ -16,7 +16,9 @@ cross-platform shell without touching the API.
 - **Done:** any code change → green `script/qa`.
 - **Architecture:** `api/` is hexagonal — `src/Domain` and
   `src/Application` stay framework-free; only `src/Infrastructure` may
-  depend on a web framework, a database, or the outside world. See
+  depend on a web framework, a database, or the outside world. Mechanically
+  enforced by `script/check-mago` (`mago.toml`'s guard), part of
+  `script/qa` — a violation fails the gate, not just a review comment. See
   `api/README.md`.
 - **No invented ops facts:** hostnames, URLs, credentials, deploy
   targets — from repo config or the human only.

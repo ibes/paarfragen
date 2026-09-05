@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Description: Lint PHP (Mago linter). Pass --fix to auto-fix safe issues.
+# Side-effects: read-only by default; WRITES if --fix is passed.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+script/lib/mago-install
+exec bin/mago lint "$@"

@@ -90,5 +90,8 @@ else
   echo "Skipping api composer install — no Docker available this session."
 fi
 
+script/lib/mago-install \
+  || echo "WARNING: fetching Mago failed — script/check-mago won't run this session."
+
 echo "== session-start: done =="
 exit 0

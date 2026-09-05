@@ -502,3 +502,38 @@ in CLAUDE.md. Adapted from `redlich`'s `AGENT-FIRST-CONTRACT.md` +
 `script/qa`, deliberately smaller: no `--project` multi-repo dispatch
 (paarfragen is one project) and no `--human` streaming mode (JSON is
 the only output shape needed right now, not two).
+
+## 2026-09-05 — Mago: hexagonal guard enforced in code, not just CLAUDE.md
+
+Added `mago.toml` (adapted from `emsig`'s, namespace `Paarfragen\`,
+paths `api/src`/`api/tests`) — formatter, linter, analyzer, and a
+`[guard]` that mechanically enforces the layering CLAUDE.md used to
+only assert: Domain permits nothing but `@native`; Application adds
+Domain; Infrastructure adds Domain + Application + `Tempest\**`; plus
+structural rules (Infrastructure classes final, Application use-cases
+readonly, Domain has no base class outside its own `…\Exception\`).
+`script/check-mago` folds `format --check` + `lint` + `analyze` +
+`guard` (each run at `--minimum-fail-level=note` — the strictest
+setting, so even a Note-level finding fails) into one
+`{status, violations, total, summary}` report; `script/check` picks
+it up automatically. `script/format`/`lint`/`analyze`/`guard` are the
+write-capable/ad-hoc counterparts, mirroring emsig's own script names.
+`bin/mago` is a pinned binary (`script/lib/mago-install`, gitignored),
+fetched by `script/setup` and `session-start.sh`, not a composer
+package. CLAUDE.md's architecture bullet now says a violation fails
+`script/qa`, not just "please keep this framework-free."
+
+**Why:** the human asked for Mago specifically, "as strict as
+possible," and for CLAUDE.md compliance asks to become qa gates
+wherever that's possible instead of staying prose. `src/Domain`,
+`src/Application`, `src/Infrastructure` are still empty `.gitkeep`
+placeholders — the only moment to draw this boundary before real code
+could violate it. Verified against real (throwaway) violations before
+committing: a Domain class importing `Tempest\Router\Get`, a
+non-final Infrastructure class, and a non-readonly Application class
+were all caught and reported with the right file/line before being
+deleted again. Dropped emsig's `*Request`/`*View`/`Bindable`
+structural rules and its `literal-named-argument` severity
+downgrade — the first three assume Infrastructure conventions
+paarfragen hasn't chosen yet (would be guessing), and lowering a
+rule's severity contradicts "as strict as possible."

@@ -3,6 +3,10 @@
 /api/.phpunit.cache/
 /api/composer.phar
 
+# Mago — downloaded by script/lib/mago-install, pinned version lives in that
+# script, not in git.
+/bin/mago
+
 # Node (frontend/ has its own .gitignore too; these cover anything at root)
 node_modules/
 dist/

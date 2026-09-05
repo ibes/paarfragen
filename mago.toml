@@ -1,0 +1,94 @@
+# Mago — formatter, linter, analyzer, architecture guard. See api/README.md
+# for the layer layout this enforces.
+
+php-version = "8.5"
+
+[source]
+paths = ["api/src", "api/tests"]
+includes = ["api/vendor"]
+
+[formatter]
+
+[linter]
+integrations = ["php-unit", "tempest"]
+
+[analyzer]
+excludes = ["api/tests/**/*.php"]
+check-missing-type-hints = true
+check-closure-missing-type-hints = true
+check-arrow-function-missing-type-hints = true
+find-overly-wide-return-types = true
+
+# --- Architecture guard: the hexagon, enforced -------------------------------
+# Dependencies point inward. Domain/Application stay framework-free; only
+# Infrastructure may touch Tempest. Namespace is Paarfragen\*, autoload-mapped
+# from api/composer.json — three layers, no separate UI layer (pure JSON API).
+
+[guard.perimeter]
+layering = [
+    "Paarfragen\\Domain",
+    "Paarfragen\\Application",
+    "Paarfragen\\Infrastructure",
+]
+
+[guard.perimeter.layers]
+core = ["@native"]
+
+[[guard.perimeter.rules]]
+namespace = "Paarfragen\\Domain\\"
+permit = ["@self", "@layer:core"]
+
+[[guard.perimeter.rules]]
+namespace = "Paarfragen\\Application\\"
+permit = ["@self", "@layer:core", "Paarfragen\\Domain\\**"]
+
+[[guard.perimeter.rules]]
+namespace = "Paarfragen\\Infrastructure\\"
+permit = ["@self", "@layer:core", "Paarfragen\\Domain\\**", "Paarfragen\\Application\\**", "Tempest\\**"]
+
+[[guard.perimeter.rules]]
+namespace = "Paarfragen\\Tests\\"
+permit = ["@all"]
+
+# --- Structural guard: shape rules ------------------------------------------
+
+# Adapters are leaf implementations — no inheritance chains into Infrastructure.
+[[guard.structural.rules]]
+on = "Paarfragen\\Infrastructure\\**"
+target = "class"
+must-be-final = true
+reason = "Infrastructure adapters are leaf implementations"
+
+[[guard.structural.rules]]
+on = "Paarfragen\\Infrastructure\\**\\*Controller"
+target = "class"
+must-be-named = "*Controller"
+reason = "Tempest controllers — *Controller naming"
+
+# Application use-cases: stateless command objects, one per rule (no shared
+# mutable state between Domain calls). Revisit if a real use case needs
+# constructor-injected mutable collaborators this can't express.
+[[guard.structural.rules]]
+on = "Paarfragen\\Application\\**"
+target = "class"
+must-be-readonly = true
+reason = "Application use-cases are stateless command objects"
+
+# Domain models have no base class — domain errors live under …\Exception\,
+# not beside entities/value objects/ports.
+[[guard.structural.rules]]
+on = "Paarfragen\\Domain\\**"
+not-on = "Paarfragen\\Domain\\**\\Exception\\**"
+target = "class"
+must-extend = "@nothing"
+reason = "Domain models have no base class — domain errors live under …\\Exception\\"
+
+[[guard.structural.rules]]
+on = "Paarfragen\\Domain\\**\\Exception\\**"
+target = "class"
+must-be-final = true
+must-extend = [
+    ["RuntimeException"],
+    ["InvalidArgumentException"],
+]
+reason = "Domain errors — final class extending RuntimeException or InvalidArgumentException"

@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Description: Fetch the pinned Mago binary to bin/mago for this platform. Idempotent — no-op if present.
+# Side-effects: WRITES bin/mago (downloads from GitHub releases) when absent. Shared by script/setup and script/check-mago.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+MAGO_VERSION="1.30.0"
+
+if [[ -x bin/mago ]]; then
+    exit 0
+fi
+
+# Mago is a Rust binary, not a composer package — pin + fetch it per platform.
+case "$(uname -sm)" in
+    "Darwin arm64")  target="aarch64-apple-darwin" ;;
+    "Darwin x86_64") target="x86_64-apple-darwin" ;;
+    "Linux aarch64") target="aarch64-unknown-linux-gnu" ;;
+    "Linux x86_64")  target="x86_64-unknown-linux-gnu" ;;
+    *) echo "Unsupported platform: $(uname -sm). Install Mago manually -> bin/mago" >&2; exit 1 ;;
+esac
+
+url="https://github.com/carthage-software/mago/releases/download/${MAGO_VERSION}/mago-${MAGO_VERSION}-${target}.tar.gz"
+mkdir -p bin
+echo "Downloading Mago ${MAGO_VERSION} (${target})..."
+tmp="$(mktemp -d)"
+token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+if [[ -n "$token" ]]; then
+    curl -fsSL -H "Authorization: Bearer $token" "$url" | tar -xz -C "$tmp"
+else
+    curl -fsSL "$url" | tar -xz -C "$tmp"
+fi
+cp "$tmp/mago-${MAGO_VERSION}-${target}/mago" bin/mago
+chmod +x bin/mago
+rm -rf "$tmp"

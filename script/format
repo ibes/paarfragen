@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Description: Format all PHP source in place (Mago formatter).
+# Side-effects: WRITES — rewrites files under api/src/ and api/tests/.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+script/lib/mago-install
+exec bin/mago format "$@"
