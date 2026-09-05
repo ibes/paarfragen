@@ -302,3 +302,36 @@ language, not a decision that the product itself will ship in English.
 Recorded that distinction as an open item in `specs/STATUS.md` rather
 than letting the placeholder text's language quietly stand in for a
 decision nobody's actually made.
+
+## 2026-09-05 — `production.cloudfront.docker.com` fix confirmed; new blocker found one layer in (`deb.debian.org`)
+
+A human added `production.cloudfront.docker.com` to this environment's
+Network access allowlist and started this new session to verify it.
+Confirmed fixed: `sudo dockerd` (daemon start, same workaround as
+before), then `docker pull hello-world` succeeded, and `docker compose
+build api` got past both `FROM php:8.5-cli-trixie` and `FROM
+composer:2` — full pull and layer extraction, no CDN 403.
+
+**New blocker, same root cause, different host:** the build then hit
+`apt-get update` (installing `libicu-dev` etc. before
+`docker-php-ext-install`) failing with 403 on every `deb.debian.org`
+source (`trixie`, `trixie-updates`, `trixie-security` — this base
+image's default sources.list routes all three through `deb.debian.org`
+itself, not a separate `security.debian.org` host). Didn't assume this
+was the same class of problem — verified it: `docker run --rm
+php:8.5-cli-trixie` probing `deb.debian.org` directly showed plain
+HTTP getting a 403 and HTTPS getting intercepted with a certificate
+issued by `O=Anthropic, CN=Egress Gateway SDS Issuing CA (production)`
+for `CN=*.debian.org` (via `openssl s_client -connect
+deb.debian.org:443 -servername deb.debian.org | openssl x509 -noout
+-issuer -subject`). That's this environment's own egress gateway, the
+same mechanism that gated the Docker CDN host — just a different
+domain not yet on the allowlist.
+
+**Not fixable from inside this session** (same as the CDN host
+before): logged the exact host and the certificate-issuer evidence in
+`specs/STATUS.md` rather than guessing at a workaround (no alternate
+mirror substituted, no `--no-check-certificate`-style bypass) and
+stopped to ask, per this task's own instruction to check rather than
+self-diagnose when a network block repeats. `script/qa` was not run —
+the build still isn't green.

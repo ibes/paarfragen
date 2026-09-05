@@ -6,23 +6,42 @@ is the current state, kept short on purpose.
 
 ## Right now
 
-**One active blocker, waiting on a human action outside this repo:**
-`api/`'s Docker image (needed for PHP 8.5 / Tempest) can't build in
-this dev sandbox — every `docker pull` from Docker Hub 403s on
-`production.cloudfront.docker.com`, one of Docker Hub's CDN hosts that
-isn't on this environment's network allowlist (confirmed via the proxy's
-own failure log, not guessed). Fix: a human adds that domain to the
-environment's Network access settings (Custom level), then starts a
-**new session** — network policy is fixed at session start, so this
-session can't pick up the change itself.
+**`production.cloudfront.docker.com` fix confirmed — `docker pull` now
+works.** In this session: `sudo dockerd` (daemon), then `docker pull
+hello-world` succeeded, and `docker compose build api` got past the
+`FROM php:8.5-cli-trixie` / `FROM composer:2` stages (both pulled and
+extracted cleanly). The Docker Hub CDN blocker from the previous
+session is resolved.
 
-**First thing to do in that new session:** run `script/test-api` (or
-`docker compose build api` directly) and confirm it now actually
-builds and runs — don't assume it does. If it still fails on the same
-domain, the settings change didn't take (wrong domain, not saved, not
-yet propagated). If it fails differently, see "Docker for `api/`"
-below for what to check first (extension names, `trixie` package
-naming).
+**New, different blocker found one layer in — same root cause, new
+host: `deb.debian.org` is also not on this environment's network
+allowlist.** The Dockerfile's `apt-get update` (needed to install PHP
+extensions before `docker-php-ext-install`) 403s on every
+`deb.debian.org` source (`trixie`, `trixie-updates`,
+`trixie-security` — this image routes all three through the same
+host, not a separate `security.debian.org`). Confirmed as the
+environment's own egress policy, not a Debian-side or transient issue:
+a direct HTTPS probe to `deb.debian.org:443` from inside the container
+gets a certificate back issued by `O=Anthropic, CN=Egress Gateway SDS
+Issuing CA (production)` for `CN=*.debian.org` — the same interception
+pattern that produced the earlier Docker Hub 403, just gating a
+different domain now that the first one is open.
+
+**Fix (needs a human, same mechanism as last time):** add
+`deb.debian.org` to this environment's Network access settings
+(Custom level), then start a **new session** — network policy is
+fixed at session start. **First thing to do in that new session:**
+run `script/test-api` (or `docker compose build api` directly) and
+confirm the `apt-get update` step now succeeds — don't assume it does.
+If it still 403s on `deb.debian.org`, the settings change didn't take
+(not saved, not yet propagated). If it fails on a *different* host
+than `deb.debian.org`, this same pattern is repeating — check which
+host via the same certificate-issuer probe used here (`openssl
+s_client -connect <host>:443 -servername <host> | openssl x509 -noout
+-issuer -subject`) rather than guessing, then report it the same way
+this entry does. If it fails for a reason unrelated to network egress,
+see "Docker for `api/`" below for what to check first (extension
+names, `trixie` package naming).
 
 ## Phase
 
@@ -91,24 +110,33 @@ as either side hits a gap.
 
 ## Docker for `api/` — current status
 
-Not yet build-tested end-to-end anywhere in this repo's history.
-What's confirmed:
+Build-tested for the first time this session; gets further than ever
+before but still not green end-to-end. What's confirmed:
 
 - The Docker **daemon itself works** in this dev sandbox (`sudo dockerd`
   directly, not `sudo service docker start` — that init script hits a
   `ulimit` call this sandbox disallows).
-- **Blocked on:** `docker pull`/`docker compose build` for *any* Docker
-  Hub image 403s on `production.cloudfront.docker.com` — see "Right
-  now" above for the fix and what only a human can do.
+- **`production.cloudfront.docker.com` is now allowed** — `docker pull
+  hello-world`, and the `php:8.5-cli-trixie` / `composer:2` base-image
+  pulls inside `docker compose build api`, all succeed.
+- **Blocked on:** the Dockerfile's `apt-get update` (installing PHP
+  extension build deps) 403s on `deb.debian.org` — a *different* host
+  than the Docker CDN one, same environment-allowlist root cause. See
+  "Right now" above for the fix and what only a human can do.
 - `docker-compose.yml` parses correctly (`docker compose config`); the
   Dockerfile's package/extension list is grounded in real sources
   (Tempest's actual `composer.json` requirements, Docker Hub's real
   `php:8.5-cli-trixie` tag) — not guessed, but also not yet proven by
-  an actual successful build.
-- If the build fails once the CDN domain is unblocked: likely places
-  to check first are an extension name mismatch, or `trixie` (Debian
-  13) having renamed one of the `-dev` packages installed before
-  `docker-php-ext-install`.
+  an actual successful build, since the build still doesn't get past
+  `apt-get update`.
+- Once `deb.debian.org` is unblocked and the build gets further: likely
+  places to check next are an extension name mismatch, or `trixie`
+  (Debian 13) having renamed one of the `-dev` packages installed
+  before `docker-php-ext-install`. Not yet checked because the build
+  hasn't reached that step.
+- `script/qa` was **not** run this session — the build never reached a
+  green state, so per the task's own instruction there was nothing to
+  validate end-to-end yet.
 - Separately, **not yet done and not fixable from inside a session:**
   add `docker compose build api` to this environment's **Setup
   script** field (claude.ai/code environment dialog — a different
