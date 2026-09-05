@@ -52,3 +52,32 @@ Domain/Application/Infrastructure code or frontend UI.
 for now, but the working conventions (specs first, `script/qa` as the
 gate, decisions logged here) should be in place from the first commit,
 matching how `emsig`/`redlich` operate.
+
+## 2026-09-05 — Framework decision resolved: Tempest (superseding the open item above)
+
+Human decided: Tempest, same as `emsig`. `api/composer.json` now requires
+`php: ^8.5` and `tempest/framework: ^3.0`; `dev-require` phpunit bumped to
+`^13.3@dev` to match the version `emsig` already runs successfully on
+PHP 8.5 (untested combinations felt riskier to guess at than copying a
+known-working pair). Added `api/public/index.php` with the same
+`HttpApplication::boot()` entrypoint `emsig` uses, and `api/.env.example`
+with the same minimal keys (`SIGNING_KEY`, `APPLICATION_NAME`,
+`BASE_URI`, `ENVIRONMENT`) — no feature routes yet, that's still gated on
+a spec.
+
+**Couldn't fully verify here:** this sandbox has PHP 8.4.19, not the
+required 8.5 — `composer install` correctly refuses on this platform, so
+`composer.lock` was generated with `composer update
+--ignore-platform-req=php` (resolution only, not an actual working
+install) purely to produce a correct, consistent lock file. Installing
+PHP 8.5 via apt to test it for real was attempted and blocked — the
+`ppa.launchpadcontent.net` PHP package repo isn't on this sandbox's
+network allowlist. `vendor/` was never left in a usable state here and
+isn't committed (gitignored either way). Real validation needs to happen
+on a machine or CI with PHP 8.5 — see `specs/STATUS.md` § Known quirks.
+
+**Sibling `api/`/`frontend/` folders confirmed, not reconsidered:** Tempest
+here runs purely as a JSON API (no views, no `vite-plugin-tempest`) — the
+"couple frontend+backend into one Tempest app like emsig" alternative
+was already rejected in the split decision above, and picking Tempest
+doesn't change that reasoning.

@@ -7,7 +7,7 @@ einem nativen Container).
 ## Layout
 
 ```
-api/         PHP-Backend, hexagonal (Domain / Application / Infrastructure)
+api/         PHP-Backend auf Tempest, hexagonal (Domain / Application / Infrastructure)
 frontend/    Vue 3 + Vite, als PWA gebaut (vite-plugin-pwa)
 specs/       Specs; STATUS.md ist der Einstiegspunkt für jede Session
 script/      Alle Toolchain-Kommandos — siehe script/help
@@ -23,5 +23,7 @@ script/setup   # Dependencies installieren (api/ + frontend/)
 script/qa      # Tests + Typecheck + Build — der Gate vor jedem Commit
 script/help    # Alle Kommandos mit Beschreibung + Side-effects
 ```
+
+`api/` braucht PHP **^8.5** (Tempest) — siehe `specs/STATUS.md`.
 
 Agent-Arbeitsregeln: [`CLAUDE.md`](CLAUDE.md).
