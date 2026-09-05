@@ -621,3 +621,10 @@ Also ran `script/format-frontend` once, immediately after: `App.vue`,
 `main.ts`, `style.css`, `vite.config.ts` had never seen Prettier before
 (quotes, semicolons). Reformatted now, while it's four small files,
 rather than letting the diff grow.
+
+## 2026-09-05 — tsconfig.app.json: noUncheckedIndexedAccess
+
+Added explicitly — `@vue/tsconfig`'s `tsconfig.lib.json` variant ships
+this (`array[i]` types as possibly-`undefined`), but the
+`tsconfig.dom.json` this project extends doesn't. Cheap, real
+strictness win, no code exists yet to be affected either way.
