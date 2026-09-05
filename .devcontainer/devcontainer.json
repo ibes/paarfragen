@@ -1,0 +1,8 @@
+{
+  "name": "paarfragen",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "api",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root",
+  "postCreateCommand": "script/setup"
+}

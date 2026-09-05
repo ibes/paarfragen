@@ -36,13 +36,24 @@ final readonly class QuestionController
 No such controller exists yet — first slice needs a spec first, see
 `../specs/STATUS.md`.
 
-## Requires PHP ^8.5
+## Requires PHP ^8.5 — runs in a container, not on the host
 
-Tempest ^3.0 requires PHP ^8.5. `composer.lock` was generated against that
-requirement; it could not be installed/verified in the sandbox this repo
-was scaffolded in (PHP 8.4.19 only, and GitHub's API rate-limited dist
-downloads through that sandbox's proxy) — run `../script/setup` and
-`../script/qa` on a machine or CI with PHP 8.5 to actually validate.
+Tempest ^3.0 requires PHP ^8.5. Rather than depend on whatever PHP the
+host/VM happens to ship (a Claude Code cloud session's VM, a contributor's
+laptop, CI), every `script/*` that touches `api/` runs it inside the
+`api` service defined in `../docker-compose.yml` /
+`../.devcontainer/Dockerfile` (`php:8.5-cli-trixie` + the extensions
+Tempest needs) via `script/lib/api-php`. You never need PHP 8.5 installed
+locally — you need Docker.
+
+The same image is also the local VS Code Dev Container for the whole
+repo (`../.devcontainer/devcontainer.json` points at this same `api`
+service) — open the repo in a Dev Container and you get PHP 8.5, Node,
+and the CLI tools in `.devcontainer/Dockerfile` in one shell.
+
+Not yet build-tested end-to-end (no working Docker daemon in the sandbox
+this was set up in) — see `../specs/STATUS.md` § Known quirks before
+relying on it.
 
 ## Toolchain
 

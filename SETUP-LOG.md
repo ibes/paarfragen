@@ -173,3 +173,76 @@ trustworthy source — didn't want to pull an unvetted binary from a
 random GitHub repo (also blocked here anyway: this session's GitHub
 proxy 403'd a release-asset download from a repo outside its scoped
 list). Revisit if/when the environment's network policy changes.
+
+## 2026-09-05 — `api/` runs PHP 8.5 in a Docker container, not on the host
+
+Superseded the previous entry's stopping point. Read Claude Code's own
+[cloud environments docs](https://code.claude.com/docs/en/cloud-environments)
+properly instead of stopping at the empirical 403 — one thing stated
+there directly corrects a guess from that earlier entry: **a cloud
+environment's "Setup script" runs under the exact same network access
+level as the live session**, it doesn't get more access at some
+separate "build time." My earlier "build-time and session-runtime
+network access are evidently not the same policy" conclusion was
+wrong — I inferred it from this base image's PHP 8.4 having been built
+from the `ondrej/php` PPA, but that image is built by Anthropic's own
+infrastructure, entirely outside any user's environment/network-policy
+config — not evidence about setup-script timing at all.
+
+What the docs actually point at: Docker Hub pulls **are** in the
+default network access level's allowlist, and "run your own image as a
+container alongside Claude with `docker compose`" is the docs' own
+suggested way to get a toolchain the base image doesn't ship, since
+"replacing the base image entirely isn't supported yet." That's a real,
+supported path — unlike guessing at network policy internals.
+
+**What was built:** `docker-compose.yml` (root) + `.devcontainer/Dockerfile`
+define an `api` service — `php:8.5-cli-trixie` (confirmed as a real
+Docker Hub tag, not guessed) with the PHP extensions `tempest/framework`'s
+own `composer.json` actually requires (ext-dom, ext-fileinfo, ext-intl,
+ext-libxml, ext-mbstring, ext-pdo, ext-readline, ext-simplexml) plus
+pdo_sqlite/sqlite3/curl, Composer (copied from its own official image),
+Node 22, and the same kind of CLI tools as `redlich`'s devcontainer
+(`rg`/`fd`/`jq`/`tree`/`shellcheck`/`httpie`/`ast-grep` — all from
+Debian's default archive or npm, nothing needing a blocked network
+path). `script/lib/api-php` routes every `script/*` PHP/composer call
+through `docker compose run --rm api ...`; `script/setup`, `script/qa`,
+`script/check`, `script/test-api` were updated to use it instead of
+bare `composer`/`vendor/bin/phpunit`. `.claude/hooks/session-start.sh`
+now builds the `api` image instead of apt-getting PHP onto the VM.
+
+**Why this over an environment network-policy change:** doesn't need
+anyone to edit the environment's allowed-domains list at all — Docker
+Hub already being trusted by default means this works out of the box.
+It's also strictly more useful: the exact same image is now the local
+VS Code Dev Container (`devcontainer.json` → `dockerComposeFile` +
+`service: api`) for the whole repo, not just a fix for one cloud
+session's PHP version. One definition, three consumers (cloud session,
+CI later, local Dev Container) instead of three separately-maintained
+setups.
+
+**Caching, since a fresh build every session is real cost:** the
+environment's own filesystem-snapshot cache (~7 days, covers Docker
+images per Claude Code's own docs) only applies to its **Setup
+script** — a claude.ai/code environment-dialog field, a different
+mechanism from this repo's `.claude/hooks/session-start.sh`. Left a
+clear note in `specs/STATUS.md` that someone needs to add `docker
+compose build api` there by hand; I have no tool access to that
+environment setting from inside a session. Without it,
+`session-start.sh` still rebuilds every session — from Docker's own
+layer cache, so not fully from scratch, but not as fast as the
+environment cache would make it.
+
+**What's still unverified, plainly:** this specific sandbox has no
+working Docker daemon (`docker info` fails; `sudo service docker start`
+hit a `ulimit` permission error, consistent with nested containers
+being disabled here) — so neither `docker compose build` nor a single
+container run has actually succeeded anywhere in this repo's history.
+Validated everything that didn't need a daemon: `docker compose
+config` parses the compose file correctly, `shellcheck` is clean on
+every changed script, the PHP extensions were checked against
+Tempest's real `composer.json` rather than guessed, and
+`docker-php-ext-install` is confirmed (via its own documented
+behavior) to skip gracefully rather than fail when an extension turns
+out to already be compiled into the base image. The actual build is
+the next thing to prove, in a session that has Docker working.

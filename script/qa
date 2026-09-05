@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Description: Local gate — runs script/test-api and script/test-frontend, then the frontend build.
-# Side-effects: WRITES api/vendor/ or frontend/node_modules/ if dependencies changed since the last install; none on tracked source otherwise.
+# Side-effects: WRITES api/vendor/ or frontend/node_modules/ if dependencies changed since the last install; none on tracked source otherwise. Builds the api/ Docker image on first run.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

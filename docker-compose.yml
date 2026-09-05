@@ -1,0 +1,20 @@
+# PHP 8.5 runtime for api/ (Tempest needs ^8.5; the host/VM's own PHP is
+# whatever it happens to ship — see specs/STATUS.md). script/* route every
+# PHP/composer call through `docker compose run --rm api ...` instead of
+# assuming a host PHP version, in cloud sessions and locally alike.
+#
+# Also doubles as the local VS Code Dev Container — see
+# .devcontainer/devcontainer.json, which points at this same `api` service
+# rather than defining a separate image.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    working_dir: /workspace
+    volumes:
+      - .:/workspace
+    # No `command:` — this service isn't meant to run standalone
+    # (`docker compose up`). It's invoked per-command via
+    # `docker compose run --rm api <cmd>`, or attached to interactively
+    # as the Dev Container shell.

@@ -24,6 +24,10 @@ script/qa      # Tests + Typecheck + Build — der Gate vor jedem Commit
 script/help    # Alle Kommandos mit Beschreibung + Side-effects
 ```
 
-`api/` braucht PHP **^8.5** (Tempest) — siehe `specs/STATUS.md`.
+`api/` braucht PHP **^8.5** (Tempest) — läuft dafür in einem Container
+(`docker-compose.yml` / `.devcontainer/`), nicht auf dem Host. Du brauchst
+also **Docker**, nicht PHP 8.5 lokal installiert. Dasselbe Image ist auch
+der lokale VS-Code-Dev-Container fürs ganze Repo. Details:
+`api/README.md`, `specs/STATUS.md`.
 
 Agent-Arbeitsregeln: [`CLAUDE.md`](CLAUDE.md).

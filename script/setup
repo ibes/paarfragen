@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Description: Dev setup — install API and frontend dependencies. Safe to re-run.
-# Side-effects: WRITES api/vendor/, frontend/node_modules/.
+# Description: Dev setup — build the api/ container and install API and frontend dependencies. Safe to re-run.
+# Side-effects: WRITES api/vendor/, frontend/node_modules/; builds/pulls the api/ Docker image.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-echo "Installing API dependencies (composer)..."
-(cd api && composer install --no-interaction)
+echo "Installing API dependencies (composer, inside the PHP 8.5 container)..."
+script/lib/api-php composer install --no-interaction
 
 echo "Installing frontend dependencies (npm)..."
 (cd frontend && npm install)

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Description: Read-only static checks — composer.json validity, frontend typecheck. No test run, no build output.
-# Side-effects: none (read-only).
+# Side-effects: none (read-only), beyond building the api/ Docker image on first run if it doesn't exist yet.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "== api: composer validate =="
-(cd api && composer validate --no-check-publish --no-interaction)
+script/lib/api-php composer validate --no-check-publish --no-interaction
 
 echo "== frontend: vue-tsc typecheck =="
 (cd frontend && npx vue-tsc --noEmit)

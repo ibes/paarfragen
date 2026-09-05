@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Runs a command inside the api/ container (PHP 8.5 + composer — see
+# .devcontainer/Dockerfile). Every script/* that touches api/ goes
+# through this, rather than assuming a host PHP version, so it behaves
+# the same locally, in a Claude Code cloud session, and in CI.
+#
+# Usage: script/lib/api-php <command...>   e.g. script/lib/api-php composer install
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker isn't available/running here — api/ needs it for PHP 8.5 (Tempest)." >&2
+  echo "See specs/STATUS.md for what this depends on in a Claude Code cloud session." >&2
+  exit 1
+fi
+
+docker compose run --rm --no-deps -w /workspace/api api "$@"

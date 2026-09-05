@@ -39,6 +39,14 @@ assume the vision doc is ready to build as-is.
 - **API contract drafted ahead of implementation** — `specs/api.md` —
   so both sides can build against it in parallel once a slice spec
   exists.
+- **`api/` (PHP 8.5) runs in a Docker container, not on the host** —
+  `docker-compose.yml` + `.devcontainer/Dockerfile`, invoked via
+  `script/lib/api-php`. Chosen over changing this environment's network
+  access level: sidesteps the PHP-PPA problem below entirely (Docker
+  Hub pulls are allowed under the default network access level; a
+  third-party apt PPA is not) and gives local devs the same container
+  as a VS Code Dev Container. See `SETUP-LOG.md` for the fuller
+  reasoning and what's still unverified.
 
 ## Open decisions (not yet made — ask before assuming)
 
@@ -57,28 +65,44 @@ assume the vision doc is ready to build as-is.
 
 ## Known quirks
 
-- **PHP 8.5 required, this dev sandbox only has 8.4.19.** `api/composer.lock`
-  was generated with `--ignore-platform-req=php` purely to get a correct,
-  resolvable lock file; it was never installed/run end-to-end here.
-  `script/setup` and `script/qa` will correctly refuse in any PHP 8.4
-  environment (composer's own platform-requirement error) — that's
-  expected, not a bug. Needs a real PHP 8.5 machine or CI to validate.
-  `.claude/hooks/session-start.sh` tries `apt-get install php8.5-cli`
-  from the same `ondrej/php` PPA this image's own PHP 8.4 was built
-  from — confirmed working when that image itself was built, but
-  confirmed **blocked (403)** when run live from inside this specific
-  Claude Code web session (network egress policy denies
-  `ppa.launchpadcontent.net` at runtime, even though it's reachable at
-  image-build time). The hook degrades gracefully either way (skips
-  `composer install`, still installs frontend deps + CLI tools). If
-  your environment's network policy allows that PPA, the hook installs
-  PHP 8.5 and `api/` tests actually run — check the environment's
-  network settings if you want that:
-  https://code.claude.com/docs/en/claude-code-on-the-web
+- **`api/`'s Docker image was never actually built in this dev sandbox
+  — no working Docker daemon here** (`docker info` fails; starting it
+  hit a `ulimit`/permission error consistent with this specific sandbox
+  not allowing nested containers). `docker-compose.yml` config is
+  validated (`docker compose config` parses correctly) and the
+  Dockerfile's package/extension choices are grounded in real sources
+  (Tempest's own `composer.json` for which PHP extensions it needs,
+  Docker Hub's actual tag list for `php:8.5-cli-trixie` — not guessed),
+  but the actual `docker build` / `docker compose run` has **not**
+  succeeded anywhere in this repo's history yet. First real session
+  with a working Docker daemon should treat that as the thing to
+  verify, not assume it's already proven. If it fails, likely places to
+  look: an extension name mismatch, or `trixie` (Debian 13) having a
+  renamed package for one of the `-dev` libs installed before
+  `docker-php-ext-install`.
+- Getting there needed two earlier approaches, both dead ends worth not
+  repeating: (1) apt-get installing `php8.5-cli` from the `ondrej/php`
+  PPA directly onto the session VM — blocked (403) by this
+  environment's network access level, which only allows common package
+  registries, not arbitrary third-party PPAs; (2) assuming a `docker
+  build`'s network access differs from the live session's — it
+  doesn't, same access level applies to both (see [cloud environments
+  docs](https://code.claude.com/docs/en/cloud-environments)); Docker
+  Hub itself being in the default allowlist is what actually makes the
+  container approach work, not some build-time exception.
+- **Not yet done, and not something I can do from inside a session:**
+  add `docker compose build api` to this environment's **Setup
+  script** field (claude.ai/code → environment settings — a UI/account
+  setting, not a repo file) so the image gets cached in the
+  environment's ~7-day filesystem snapshot instead of rebuilding (from
+  Docker's layer cache, so not from scratch, but still redone) on every
+  `.claude/hooks/session-start.sh` run. Until someone does that by hand,
+  every fresh session pays the build cost once.
 - GitHub's API rate-limited anonymous dist downloads through this
-  sandbox's proxy during that same composer run (unrelated to the PHP
-  version issue) — composer fell back to cloning from git source
-  successfully; a different sandbox/network may not hit this at all.
+  sandbox's proxy during an earlier `composer update` run (before the
+  Docker approach existed) — composer fell back to cloning from git
+  source successfully; a different sandbox/network may not hit this at
+  all.
 - `frontend/vite.config.ts` ships `vite-plugin-pwa` with an empty
   `icons: []` — no real app icons exist yet (see the TODO next to it).
   Add 192×192 and 512×512 PNGs before treating the PWA as installable.
