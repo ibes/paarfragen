@@ -373,3 +373,45 @@ metadata).
 next session doesn't re-derive "does packagist/npm/github work" from
 scratch, and so the human adding `deb.debian.org` this time also adds
 `deb.nodesource.com` in the same pass instead of a third round-trip.
+
+## 2026-09-05 — `session-start.sh` didn't actually start the Docker daemon
+
+Asked to close every gap that would stop the next session from going
+straight down the happy path once the network allowlist is fixed.
+Found one: `.claude/hooks/session-start.sh` gates its `docker compose
+build api` step behind `docker info`, but nothing in the hook, or
+anywhere else in this repo or the container image, ever runs `dockerd`
+itself. `service docker start` is the normal way that would happen and
+it fails here (the `ulimit` issue from the entry above) — so every
+session, including this one, started with no daemon running at all
+until a person or agent noticed and ran `sudo dockerd` by hand. The
+hook's own warning path ("Docker isn't available/running — skipping")
+made this look like an expected, already-handled case rather than a
+bug, which is exactly why it went unnoticed until asked to verify the
+happy path specifically.
+
+**Fix:** added a `docker daemon` step to the hook, before the image
+build, that checks `docker info` and — only if it's not already
+up — starts `dockerd` via `sudo nohup dockerd
+>/var/log/dockerd-session-start.log 2>&1 & disown`, then polls
+`docker info` for up to 15s before continuing. `nohup` + `disown`
+rather than a bare `&`: the daemon needs to keep running for the rest
+of the session after this hook's own script has exited, not just for
+the duration of this command.
+
+**Verified, not assumed:** stopped the daemon (`sudo pkill -f
+'bin/dockerd'`) and ran the whole modified `session-start.sh`
+end-to-end from cold. Confirmed: daemon start step fires and succeeds,
+`docker compose build api` then runs (still fails at the
+`deb.debian.org` apt stage, exactly the known/expected blocker — no
+new failure introduced), CLI tools and `frontend/`'s `npm install`
+both complete cleanly. Once `deb.debian.org` and `deb.nodesource.com`
+are both allowlisted, this hook should take a fresh session all the
+way to a built image and installed dependencies with no manual step.
+
+Also tightened the hook's header comment, which claimed Docker Hub
+pulls were "allowed under this environment's default network access"
+— not true, confirmed the hard way this session: it took an explicit
+Custom-allowlist entry for `production.cloudfront.docker.com`. Updated
+it to point at `specs/STATUS.md` for the current, accurate host list
+instead of asserting a fact that turned out to be wrong.

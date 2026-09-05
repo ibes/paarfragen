@@ -56,10 +56,14 @@ only one would just trade today's blocker for tomorrow's, since the
 Dockerfile hits `deb.debian.org` first and `deb.nodesource.com`
 immediately after.
 
-**First thing to do in that new session:** run `script/test-api` (or
-`docker compose build api` directly) and confirm the build gets past
-*both* apt stages — don't assume it does. If it still 403s on either
-host, the settings change didn't take (not saved, not yet propagated).
+**First thing to do in that new session:** nothing manual should be
+needed — `.claude/hooks/session-start.sh` now starts the Docker daemon
+itself (see "Docker for `api/`" below) and already runs `docker compose
+build api` + `composer install` + `npm install` on every session
+start. Just check the hook's own output (or re-run `script/test-api`)
+and confirm the build gets past *both* apt stages — don't assume it
+does. If it still 403s on either host, the settings change didn't take
+(not saved, not yet propagated).
 If it fails on a host not in the table above, this same pattern is
 repeating — check which host via the same certificate-issuer probe
 used here (`openssl s_client -connect <host>:443 -servername <host> |
@@ -143,7 +147,13 @@ before but still not green end-to-end. What's confirmed:
 
 - The Docker **daemon itself works** in this dev sandbox (`sudo dockerd`
   directly, not `sudo service docker start` — that init script hits a
-  `ulimit` call this sandbox disallows).
+  `ulimit` call this sandbox disallows). **`.claude/hooks/session-start.sh`
+  now starts it automatically** (it wasn't running anything before,
+  despite the hook already assuming `docker info` would just work) —
+  confirmed by running the hook end-to-end from a cold daemon this
+  session. Once the two hosts below are allowed, a fresh session should
+  need no manual step at all: daemon starts, image builds, `composer
+  install`/`npm install` run, all from `session-start.sh` alone.
 - **`production.cloudfront.docker.com` is now allowed** — `docker pull
   hello-world`, and the `php:8.5-cli-trixie` / `composer:2` base-image
   pulls inside `docker compose build api`, all succeed.

@@ -8,8 +8,11 @@
 # image (.devcontainer/Dockerfile, docker-compose.yml) instead of trying
 # to apt-get install a PHP version onto the session VM itself. That PPA
 # install was tried and confirmed blocked from a live session (see
-# SETUP-LOG.md); the Docker image sidesteps it since Docker Hub pulls are
-# allowed under this environment's default network access.
+# SETUP-LOG.md). Docker Hub pulls need this environment's Network access
+# set to Custom with `production.cloudfront.docker.com` allowed — not on
+# by default, confirmed the hard way; see specs/STATUS.md for that host
+# plus the others (`deb.debian.org`, `deb.nodesource.com`) the Dockerfile
+# itself needs on the same allowlist before its `apt-get` stages pass.
 #
 # This hook re-runs (and re-builds the image, hitting Docker's layer
 # cache) on every session start — it does NOT get the environment's own
@@ -38,6 +41,28 @@ sudo apt-get install -y --no-install-recommends \
 
 npm install -g @ast-grep/cli \
   || echo "WARNING: ast-grep install failed — continuing anyway."
+
+echo "== session-start: docker daemon =="
+if docker info >/dev/null 2>&1; then
+  echo "Docker daemon already running."
+else
+  # `sudo service docker start` fails here — its init script hits a
+  # `ulimit` call this sandbox disallows. `sudo dockerd` directly works
+  # fine; it just isn't started by anything automatically. See
+  # SETUP-LOG.md ("Correction: the daemon works; the real blocker is one
+  # CDN host").
+  sudo nohup dockerd >/var/log/dockerd-session-start.log 2>&1 &
+  disown
+  for _ in $(seq 1 15); do
+    docker info >/dev/null 2>&1 && break
+    sleep 1
+  done
+  if docker info >/dev/null 2>&1; then
+    echo "Docker daemon started."
+  else
+    echo "WARNING: dockerd didn't come up within 15s — see /var/log/dockerd-session-start.log."
+  fi
+fi
 
 echo "== session-start: api/ container (PHP 8.5 for Tempest) =="
 if docker info >/dev/null 2>&1; then
