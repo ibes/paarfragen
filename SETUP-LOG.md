@@ -481,3 +481,24 @@ expose at that name.
 
 **End state:** `docker compose build api`, `script/test-api`, and
 `script/qa` are all green for the first time ever in this repo.
+
+## 2026-09-05 — `script/check` is now a dispatcher speaking one JSON contract
+
+`script/check` globs `script/check-*` and folds each result into
+`{status, checks: [...]}` (`script/lib/check-report.sh`); a check may
+speak `{status, violations, total, summary?}` natively
+(`script/lib/check-contract.sh`), detected via `jq -e '.status'`, or
+just be a plain tool (composer, vue-tsc) that falls back to
+`{name, status, exit, raw_output}` — `raw_output` omitted when clean,
+so a passing run stays a one-liner per check. The two existing checks
+moved into `script/check-composer` and `script/check-frontend-types`.
+`script/qa` now runs `script/check` first, as a hard gate — a new
+`check-*` joins both by construction, no wiring needed anywhere.
+
+**Why:** the human asked for qa output to be compact, LLM-legible JSON
+rather than prose, and for future conventions (git-staging discipline,
+hexagonal boundaries) to be enforced *in* qa instead of only asserted
+in CLAUDE.md. Adapted from `redlich`'s `AGENT-FIRST-CONTRACT.md` +
+`script/qa`, deliberately smaller: no `--project` multi-repo dispatch
+(paarfragen is one project) and no `--human` streaming mode (JSON is
+the only output shape needed right now, not two).

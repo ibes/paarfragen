@@ -1,14 +1,31 @@
 #!/usr/bin/env bash
-# Description: Read-only static checks — composer.json validity, frontend typecheck. No test run, no build output.
-# Side-effects: none (read-only), beyond building the api/ Docker image on first run if it doesn't exist yet.
-set -euo pipefail
+# Description: Hard gate — runs every script/check-* and folds results into one JSON verdict (see script/lib/check-report.sh for the contract). Worst status wins: 0 clean / 1 red / 2 broken (a check didn't run at all).
+# Side-effects: none (read-only checks), beyond building the api/ Docker image on first run if it doesn't exist yet.
+set -Eeuo pipefail
+trap 'exit 2' ERR
 cd "$(dirname "$0")/.."
 
-echo "== api: composer validate =="
-script/lib/api-php composer validate --no-check-publish --no-interaction
+# shellcheck source=script/lib/check-report.sh
+source script/lib/check-report.sh
 
-echo "== api: PHP extensions match what the dependency tree needs =="
-script/lib/api-php composer check-platform-reqs
+shopt -s nullglob
+checks=(script/check-*)
+if (( ${#checks[@]} == 0 )); then
+    # No script/check-* found means the whole check layer vanished — that's
+    # broken, not a clean pass with nothing to report.
+    printf '{"status":"broken","checks":[]}\n'
+    exit 2
+fi
 
-echo "== frontend: vue-tsc typecheck =="
-(cd frontend && npx vue-tsc --noEmit)
+for check in "${checks[@]}"; do
+    run_check "$(basename "$check")" "$check"
+done
+
+status=clean
+case $worst in
+    0) status=clean ;;
+    1) status=red ;;
+    *) status=broken ;;
+esac
+printf '%s\n' "${entries[@]}" | jq -s --arg status "$status" '{status: $status, checks: .}'
+exit "$worst"

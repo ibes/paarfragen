@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Description: composer validate + check-platform-reqs against the real vendor tree — catches a composer.json drift or a Dockerfile missing an extension the dependency tree actually needs.
+# Side-effects: none (read-only), beyond building the api/ Docker image on first run if it doesn't exist yet.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+script/lib/api-php composer validate --no-check-publish --no-interaction
+script/lib/api-php composer check-platform-reqs
