@@ -99,3 +99,22 @@ directory split already kept the two dependency graphs apart; this
 makes the *test invocation* independently runnable too
 (`script/test-api` alone, `script/test-frontend` alone), not just the
 source layout.
+
+## 2026-09-05 — `specs/api.md`: draft API contract ahead of the first slice spec
+
+Restated the five endpoints from `redlich`'s `paarfrage-exploration-mode.md`
+vision doc into a standalone, living contract doc — not a locked spec,
+explicitly marked as such at the top of the file. Added one thing that
+doc didn't specify (a generic `{"error":{"message":...}}` shape),
+flagged inline as this repo's own unconfirmed addition rather than
+carried over from the source.
+
+**Why:** `api/` and `frontend/` are separate projects on separate
+toolchains (see the two split decisions above) — a written contract is
+what lets them actually be built in parallel against the same interface
+instead of one side blocking on the other's code. Kept as Markdown, not
+OpenAPI/YAML: matches this ecosystem's house style (`redlich`/`emsig`
+specs are prose, not schemas) and is cheaper to keep "fluid, revisable"
+the way the source vision doc explicitly wants exploration mode to be.
+Revisit as OpenAPI later if codegen (TS types, request validation)
+becomes worth the added rigor.

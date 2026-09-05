@@ -18,10 +18,15 @@ the stack decisions below come from the human directly, not from that doc.
 
 ## Next step
 
-No active spec. Before writing any Domain/Application/Infrastructure
-code, write a spec for the first slice using the `spec` skill — talk to
-the human about scope, don't assume the vision doc above is ready to
-build as-is.
+[`specs/api.md`](api.md) drafts the request/response contract for the
+first slice's five endpoints, so `api/` and `frontend/` can be built
+against a shared interface without waiting on each other. It's a draft,
+not a locked spec — still update it as either side hits a gap.
+
+Still no locked slice spec. Before writing any Domain/Application/
+Infrastructure *implementation* (as opposed to the contract doc), write
+one using the `spec` skill — talk to the human about scope, don't
+assume the vision doc is ready to build as-is.
 
 ## Decided
 
@@ -31,6 +36,9 @@ build as-is.
   top-level dirs, independent toolchains) — deliberate, so the frontend
   can later be wrapped in a native shell (e.g. Capacitor) without
   touching the API's deploy lifecycle. See `SETUP-LOG.md`.
+- **API contract drafted ahead of implementation** — `specs/api.md` —
+  so both sides can build against it in parallel once a slice spec
+  exists.
 
 ## Open decisions (not yet made — ask before assuming)
 
