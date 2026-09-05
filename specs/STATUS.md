@@ -65,20 +65,41 @@ assume the vision doc is ready to build as-is.
 
 ## Known quirks
 
-- **`api/`'s Docker image was never actually built in this dev sandbox
-  — no working Docker daemon here** (`docker info` fails; starting it
-  hit a `ulimit`/permission error consistent with this specific sandbox
-  not allowing nested containers). `docker-compose.yml` config is
-  validated (`docker compose config` parses correctly) and the
-  Dockerfile's package/extension choices are grounded in real sources
-  (Tempest's own `composer.json` for which PHP extensions it needs,
-  Docker Hub's actual tag list for `php:8.5-cli-trixie` — not guessed),
-  but the actual `docker build` / `docker compose run` has **not**
-  succeeded anywhere in this repo's history yet. First real session
-  with a working Docker daemon should treat that as the thing to
-  verify, not assume it's already proven. If it fails, likely places to
-  look: an extension name mismatch, or `trixie` (Debian 13) having a
-  renamed package for one of the `-dev` libs installed before
+- **Corrected from an earlier version of this note:** the Docker daemon
+  *does* work in this dev sandbox — `sudo service docker start`'s own
+  init script fails on a `ulimit` call this sandbox doesn't permit, but
+  running `sudo dockerd` directly works fine (confirmed:
+  `docker info`/`docker pull` succeed once it's up). That was never the
+  real blocker.
+- **The real, confirmed blocker: `docker pull`/`docker compose build`
+  for *any* Docker Hub image — `php:8.5-cli-trixie`, `composer:2`,
+  even bare `alpine`/`hello-world` — fails 403 on
+  `production.cloudfront.docker.com`,** one of the CDN hosts Docker Hub
+  serves image layers from. This environment's network access allows
+  the *other* Docker Hub CDN host (`production.cloudflare.docker.com`,
+  confirmed reachable) but not this one — confirmed via the agent
+  proxy's own failure log (`connect_rejected` specifically for
+  `production.cloudfront.docker.com:443`), not just an assumption from
+  the error message. So the Docker-container approach is currently
+  blocked too, for a *different, narrower* reason than the PHP-PPA
+  approach was: not "third-party PPAs are disallowed" but "one specific
+  Docker Hub CDN host is missing from this environment's allowlist."
+  **Fix:** in this environment's Network access settings, switch to
+  **Custom**, add `production.cloudfront.docker.com` to the allowed
+  domains (keep "also include default list" checked to keep everything
+  else Trusted already provides) — a human/environment-dialog change,
+  not something fixable from inside a session or from this repo.
+- Once that domain is allowed, `docker-compose.yml`/`.devcontainer/Dockerfile`
+  themselves are otherwise ready to actually verify: config is validated
+  (`docker compose config` parses correctly) and the package/extension
+  choices are grounded in real sources (Tempest's own `composer.json`
+  for which PHP extensions it needs, Docker Hub's actual tag list for
+  `php:8.5-cli-trixie` — not guessed), but the build has still never
+  completed end-to-end anywhere in this repo's history. Treat that as
+  the next thing to verify once the domain is unblocked, not assume
+  it's already proven — if it fails then, likely places to look: an
+  extension name mismatch, or `trixie` (Debian 13) having a renamed
+  package for one of the `-dev` libs installed before
   `docker-php-ext-install`.
 - Getting there needed two earlier approaches, both dead ends worth not
   repeating: (1) apt-get installing `php8.5-cli` from the `ondrej/php`

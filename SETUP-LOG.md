@@ -246,3 +246,39 @@ Tempest's real `composer.json` rather than guessed, and
 behavior) to skip gracefully rather than fail when an extension turns
 out to already be compiled into the base image. The actual build is
 the next thing to prove, in a session that has Docker working.
+
+## 2026-09-05 — Correction: the daemon works; the real blocker is one CDN host
+
+The "no working Docker daemon" line above was wrong, found out an hour
+later in the same investigation. `sudo service docker start`'s own
+init script fails on a `ulimit` call this sandbox doesn't permit —
+running `sudo dockerd` directly instead works fine (`docker
+info`/`docker pull` both then succeed). Worth recording as a mistake,
+not quietly editing away: I reported "no working Docker daemon in this
+sandbox" as settled fact in the previous entry and to the human,
+without having tried the one obvious workaround.
+
+The actual, now-confirmed blocker: `docker pull`/`docker compose build`
+for *any* Docker Hub image (tested `php:8.5-cli-trixie`, `composer:2`,
+and bare `alpine`/`hello-world` — all four, identical failure) 403s on
+`production.cloudfront.docker.com`. Confirmed via the agent proxy's own
+failure log showing `connect_rejected` specifically for that host —
+not inferred from the error message alone. This environment allows the
+*other* Docker Hub CDN host, `production.cloudflare.docker.com`
+(reachable, confirmed separately), just not this one. So "Docker Hub
+is in the Trusted default allowlist" (per Claude Code's own docs) is
+true but incomplete for this environment: Docker Hub apparently serves
+layers from more than one CDN backend, and only one of them is
+allowed. This is a narrower, more precise problem than "third-party
+PPAs are blocked" was — one specific domain, not a category — and
+`specs/STATUS.md` names the exact fix: switch this environment's
+Network access to **Custom** and add
+`production.cloudfront.docker.com` to the allowed list.
+
+Net effect: the Docker Compose approach itself (image choice,
+Dockerfile content, `script/lib/api-php` routing) is unchanged and
+still believed sound — it's still blocked from actually running here,
+same as the PPA approach was, just by a single missing domain instead
+of a blocked category. Once that domain is allowed, the real
+`docker compose build` verification `specs/STATUS.md` calls for can
+finally happen.
