@@ -11,18 +11,10 @@
 #     points at it via dockerComposeFile + service, not a separate build)
 FROM php:8.5-cli-trixie
 
-# Optional trust for a sandbox's TLS-inspecting egress proxy. The bracket
-# in the source path makes this COPY a glob — it's a no-op when the file
-# isn't there, which is the case everywhere except a Claude Code Remote
-# session build (session-start.sh writes it, and passes HAS_SESSION_CA,
-# before `docker compose build` — see .gitignore). That sandbox routes all
-# container HTTPS through a policy-enforcing gateway that re-terminates
-# TLS with its own CA; a stock base image doesn't trust it, so every plain
-# HTTPS call below (deb.nodesource.com, later composer/npm registries)
-# fails cert validation otherwise. Documented fix for exactly this
-# situation: /root/.ccr/README.md, "docker build / docker run" section.
-# (The cert content itself goes through this file, not a build-arg — its
-# multi-KB PEM text overflows the exec argv limit as an ARG value.)
+# Optional trust for a Claude Code Remote sandbox's TLS-inspecting egress
+# proxy (session-start.sh writes the cert + build-arg; see .gitignore and
+# /root/.ccr/README.md's "docker build / docker run" section). The bracket
+# in the COPY source makes it a glob, so this is a no-op everywhere else.
 ARG HAS_SESSION_CA=""
 COPY .devcontainer/session-ca.cr[t] /usr/local/share/ca-certificates/
 RUN if [ -n "$HAS_SESSION_CA" ]; then \
@@ -33,17 +25,12 @@ RUN if [ -n "$HAS_SESSION_CA" ]; then \
     fi
 ENV NODE_EXTRA_CA_CERTS=${HAS_SESSION_CA:+/usr/local/share/ca-certificates/session-ca.crt}
 
-# Extensions tempest/framework's own composer.json requires (ext-dom,
-# ext-fileinfo, ext-intl, ext-libxml, ext-mbstring, ext-pdo, ext-readline,
-# ext-simplexml), plus pdo_sqlite/sqlite3 for local persistence and curl
-# for Guzzle (an indirect Tempest dependency). Of those, only `intl` is
-# actually missing from `php:8.5-cli-trixie` — `php -m` confirms
-# pdo_sqlite/sqlite3/curl/dom/simplexml/readline are already built in.
-# Installing them again via docker-php-ext-install fails on this base
-# image anyway: PHP 8.5 ships their ext/*/config.m4 as config0.m4
-# (a stub only the top-level ./buildconf processes), so phpize can't
-# build them standalone — confirmed by extracting docker-php-source and
-# testing docker-php-ext-install per extension.
+# `intl` is the one extension the dependency tree needs that
+# php:8.5-cli-trixie doesn't already bundle (`script/check` runs
+# `composer check-platform-reqs` to verify that against the real vendor
+# tree — check that instead of trusting this comment). The others don't
+# install via docker-php-ext-install on this PHP version anyway: see
+# SETUP-LOG.md.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libicu-dev \
         unzip \

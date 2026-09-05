@@ -7,5 +7,8 @@ cd "$(dirname "$0")/.."
 echo "== api: composer validate =="
 script/lib/api-php composer validate --no-check-publish --no-interaction
 
+echo "== api: PHP extensions match what the dependency tree needs =="
+script/lib/api-php composer check-platform-reqs
+
 echo "== frontend: vue-tsc typecheck =="
 (cd frontend && npx vue-tsc --noEmit)

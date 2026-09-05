@@ -66,13 +66,8 @@ fi
 
 echo "== session-start: api/ container (PHP 8.5 for Tempest) =="
 if docker info >/dev/null 2>&1; then
-  # Containers in this sandbox can't reach the session's own local proxy
-  # and don't trust its TLS-inspecting egress gateway (/root/.ccr/README.md,
-  # "docker build / docker run"), so plain HTTPS calls inside the build
-  # (deb.nodesource.com, later composer/npm registries) fail cert
-  # validation unless the image trusts that gateway's CA. The Dockerfile's
-  # SESSION_CA_CERT build-arg is a no-op when empty, so this stays safe to
-  # run outside this sandbox too.
+  # Trust this sandbox's egress CA for the build (/root/.ccr/README.md,
+  # "docker build / docker run") — HAS_SESSION_CA is a no-op when unset.
   build_args=()
   if [ -r /root/.ccr/ca-bundle.crt ]; then
     cp /root/.ccr/ca-bundle.crt .devcontainer/session-ca.crt

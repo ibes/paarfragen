@@ -148,12 +148,11 @@ as either side hits a gap.
   the build context before building, and the Dockerfile trusts it
   conditionally — a no-op outside this sandbox. See "Right now" above
   and `SETUP-LOG.md` for the full finding.
-- `docker-php-ext-install` only builds `intl` now — `pdo_sqlite`,
-  `sqlite3`, `curl`, `dom`, `simplexml`, `readline` are already bundled
-  into `php:8.5-cli-trixie` and can't be built standalone on PHP 8.5
-  anyway (see "Right now" above). Confirmed via `php -m` and by testing
-  `docker-php-ext-install` per extension against the extracted PHP
-  source.
+- `docker-php-ext-install` only builds `intl` now — the rest of what
+  the dependency tree needs is already bundled into `php:8.5-cli-trixie`
+  (see "Right now" above). `script/check` runs `composer
+  check-platform-reqs` to verify this against the real vendor tree on
+  every run, instead of trusting a comment that could go stale.
 - `docker-compose.yml` parses correctly (`docker compose config`); the
   Dockerfile's package/extension list is now proven by an actual
   successful build, not just grounded in Tempest's `composer.json`.
