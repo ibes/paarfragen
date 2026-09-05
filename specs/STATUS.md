@@ -1,129 +1,130 @@
 # STATUS
 
-Session router — read this first, every session.
+Session router — read this first, every session. History and full
+reasoning behind any decision below live in `SETUP-LOG.md`; this file
+is the current state, kept short on purpose.
+
+## Right now
+
+**One active blocker, waiting on a human action outside this repo:**
+`api/`'s Docker image (needed for PHP 8.5 / Tempest) can't build in
+this dev sandbox — every `docker pull` from Docker Hub 403s on
+`production.cloudfront.docker.com`, one of Docker Hub's CDN hosts that
+isn't on this environment's network allowlist (confirmed via the proxy's
+own failure log, not guessed). Fix: a human adds that domain to the
+environment's Network access settings (Custom level), then starts a
+**new session** — network policy is fixed at session start, so this
+session can't pick up the change itself.
+
+**First thing to do in that new session:** run `script/test-api` (or
+`docker compose build api` directly) and confirm it now actually
+builds and runs — don't assume it does. If it still fails on the same
+domain, the settings change didn't take (wrong domain, not saved, not
+yet propagated). If it fails differently, see "Docker for `api/`"
+below for what to check first (extension names, `trixie` package
+naming).
 
 ## Phase
 
 **Greenfield setup.** Repo skeleton exists (`api/` hexagonal PHP on
-Tempest, `frontend/` Vue/Vite PWA), no product code yet, no spec written.
+Tempest, `frontend/` Vue/Vite PWA), no product code yet, no spec
+written.
 
-`VISION/`-style pre-spec input exists upstream in the `redlich` sibling
-repo: [`paarfrage-exploration-mode.md`](https://github.com/ibes/redlich/blob/main/VISION/paarfrage-exploration-mode.md)
-describes the intended first slice (a single shared-device question deck,
-rating loop, `deck_id` bearer identity, no accounts). It's a design input,
-not a spec — restate what's needed from it into a real spec here before
-building against it (same rule redlich's own `VISION/README.md` states:
-specs restate, never cite by path). It does not mention any tech stack;
-the stack decisions below come from the human directly, not from that doc.
+A `VISION/`-style pre-spec input exists upstream, in the `redlich`
+sibling repo:
+[`paarfrage-exploration-mode.md`](https://github.com/ibes/redlich/blob/main/VISION/paarfrage-exploration-mode.md) —
+a single shared-device question deck, rating loop, `deck_id` bearer
+identity, no accounts. It's a design input, not a spec: restate what's
+needed from it into a real spec here before building against it (same
+rule `redlich`'s own `VISION/README.md` states — specs restate, never
+cite by path). It says nothing about tech stack; every stack decision
+below came from the human directly.
 
 ## Next step
 
-[`specs/api.md`](api.md) drafts the request/response contract for the
-first slice's five endpoints, so `api/` and `frontend/` can be built
-against a shared interface without waiting on each other. It's a draft,
-not a locked spec — still update it as either side hits a gap.
+No locked slice spec yet. Before writing any Domain/Application/
+Infrastructure *implementation*, write one using the `spec` skill —
+talk to the human about scope, don't assume the vision doc above is
+ready to build as-is.
 
-Still no locked slice spec. Before writing any Domain/Application/
-Infrastructure *implementation* (as opposed to the contract doc), write
-one using the `spec` skill — talk to the human about scope, don't
-assume the vision doc is ready to build as-is.
+[`specs/api.md`](api.md) already drafts the request/response contract
+for the first slice's five endpoints, so `api/` and `frontend/` can be
+built against a shared interface once that spec exists, without one
+side waiting on the other. It's a draft, not locked — keep updating it
+as either side hits a gap.
 
 ## Decided
 
 - **API framework: Tempest** (`^3.0`), used as a pure JSON API — no
-  server-rendered views, no `vite-plugin-tempest`. See `api/README.md`.
-- **Frontend/API stay decoupled** (`api/` and `frontend/` as sibling
-  top-level dirs, independent toolchains) — deliberate, so the frontend
-  can later be wrapped in a native shell (e.g. Capacitor) without
-  touching the API's deploy lifecycle. See `SETUP-LOG.md`.
-- **API contract drafted ahead of implementation** — `specs/api.md` —
-  so both sides can build against it in parallel once a slice spec
-  exists.
-- **`api/` (PHP 8.5) runs in a Docker container, not on the host** —
+  server-rendered views, no `vite-plugin-tempest`. `api/README.md`.
+- **`api/` and `frontend/` stay decoupled** — sibling top-level dirs,
+  independent toolchains — so the frontend can later be wrapped in a
+  native shell (e.g. Capacitor) without touching the API's deploy
+  lifecycle.
+- **`api/` (PHP 8.5) runs in Docker, not on the host** —
   `docker-compose.yml` + `.devcontainer/Dockerfile`, invoked via
-  `script/lib/api-php`. Chosen over changing this environment's network
-  access level: sidesteps the PHP-PPA problem below entirely (Docker
-  Hub pulls are allowed under the default network access level; a
-  third-party apt PPA is not) and gives local devs the same container
-  as a VS Code Dev Container. See `SETUP-LOG.md` for the fuller
-  reasoning and what's still unverified.
+  `script/lib/api-php`. Same image doubles as the local VS Code Dev
+  Container. See "Docker for `api/`" below for current status.
+- **API contract drafted ahead of implementation** — `specs/api.md`.
+- **Repo content is English** (docs, code, comments, commits) —
+  `CLAUDE.md`. The product's own end-user UI language is a separate,
+  still-open decision — see below.
 
 ## Open decisions (not yet made — ask before assuming)
 
 - **Where `generate:typescript-types` (Tempest → TS type generation,
-  see `specs/api.md`) writes its output.** Deferred until real
+  `specs/api.md`) writes its output** — deferred until real
   Infrastructure DTOs exist to generate from.
-- **Auth model** for two people answering the same question set
-  together. The vision doc proposes a hardcoded, opaque `deck_id` bearer
-  token (no login) for its exploration stage — not yet confirmed for
-  this repo.
+- **Auth model** for two people sharing a question deck. Vision doc
+  proposes a hardcoded, opaque `deck_id` bearer token (no login) for
+  its exploration stage — not yet confirmed for this repo.
 - **Data storage** — nothing wired yet. Vision doc sketches
   `questions` / `question_feedback` / `app_feedback` tables; needs a
   spec before becoming schema.
-- **Deploy target's actual PHP version** — assumed to be PHP ^8.5
-  somewhere real (matching `emsig`'s toolchain), but not confirmed.
+- **Deploy target's actual PHP version** — assumed ^8.5 somewhere real
+  (matching `emsig`'s toolchain), not confirmed.
+- **End-user UI language** — repo content is English by house rule,
+  but the product's name and source vision doc are German; a
+  German-language UI is plausible but not decided. Current placeholder
+  frontend text is English only because it's a placeholder. Decide
+  before writing real UI copy.
 
-## Known quirks
+## Docker for `api/` — current status
 
-- **Corrected from an earlier version of this note:** the Docker daemon
-  *does* work in this dev sandbox — `sudo service docker start`'s own
-  init script fails on a `ulimit` call this sandbox doesn't permit, but
-  running `sudo dockerd` directly works fine (confirmed:
-  `docker info`/`docker pull` succeed once it's up). That was never the
-  real blocker.
-- **The real, confirmed blocker: `docker pull`/`docker compose build`
-  for *any* Docker Hub image — `php:8.5-cli-trixie`, `composer:2`,
-  even bare `alpine`/`hello-world` — fails 403 on
-  `production.cloudfront.docker.com`,** one of the CDN hosts Docker Hub
-  serves image layers from. This environment's network access allows
-  the *other* Docker Hub CDN host (`production.cloudflare.docker.com`,
-  confirmed reachable) but not this one — confirmed via the agent
-  proxy's own failure log (`connect_rejected` specifically for
-  `production.cloudfront.docker.com:443`), not just an assumption from
-  the error message. So the Docker-container approach is currently
-  blocked too, for a *different, narrower* reason than the PHP-PPA
-  approach was: not "third-party PPAs are disallowed" but "one specific
-  Docker Hub CDN host is missing from this environment's allowlist."
-  **Fix:** in this environment's Network access settings, switch to
-  **Custom**, add `production.cloudfront.docker.com` to the allowed
-  domains (keep "also include default list" checked to keep everything
-  else Trusted already provides) — a human/environment-dialog change,
-  not something fixable from inside a session or from this repo.
-- Once that domain is allowed, `docker-compose.yml`/`.devcontainer/Dockerfile`
-  themselves are otherwise ready to actually verify: config is validated
-  (`docker compose config` parses correctly) and the package/extension
-  choices are grounded in real sources (Tempest's own `composer.json`
-  for which PHP extensions it needs, Docker Hub's actual tag list for
-  `php:8.5-cli-trixie` — not guessed), but the build has still never
-  completed end-to-end anywhere in this repo's history. Treat that as
-  the next thing to verify once the domain is unblocked, not assume
-  it's already proven — if it fails then, likely places to look: an
-  extension name mismatch, or `trixie` (Debian 13) having a renamed
-  package for one of the `-dev` libs installed before
+Not yet build-tested end-to-end anywhere in this repo's history.
+What's confirmed:
+
+- The Docker **daemon itself works** in this dev sandbox (`sudo dockerd`
+  directly, not `sudo service docker start` — that init script hits a
+  `ulimit` call this sandbox disallows).
+- **Blocked on:** `docker pull`/`docker compose build` for *any* Docker
+  Hub image 403s on `production.cloudfront.docker.com` — see "Right
+  now" above for the fix and what only a human can do.
+- `docker-compose.yml` parses correctly (`docker compose config`); the
+  Dockerfile's package/extension list is grounded in real sources
+  (Tempest's actual `composer.json` requirements, Docker Hub's real
+  `php:8.5-cli-trixie` tag) — not guessed, but also not yet proven by
+  an actual successful build.
+- If the build fails once the CDN domain is unblocked: likely places
+  to check first are an extension name mismatch, or `trixie` (Debian
+  13) having renamed one of the `-dev` packages installed before
   `docker-php-ext-install`.
-- Getting there needed two earlier approaches, both dead ends worth not
-  repeating: (1) apt-get installing `php8.5-cli` from the `ondrej/php`
-  PPA directly onto the session VM — blocked (403) by this
-  environment's network access level, which only allows common package
-  registries, not arbitrary third-party PPAs; (2) assuming a `docker
-  build`'s network access differs from the live session's — it
-  doesn't, same access level applies to both (see [cloud environments
-  docs](https://code.claude.com/docs/en/cloud-environments)); Docker
-  Hub itself being in the default allowlist is what actually makes the
-  container approach work, not some build-time exception.
-- **Not yet done, and not something I can do from inside a session:**
+- Separately, **not yet done and not fixable from inside a session:**
   add `docker compose build api` to this environment's **Setup
-  script** field (claude.ai/code → environment settings — a UI/account
-  setting, not a repo file) so the image gets cached in the
-  environment's ~7-day filesystem snapshot instead of rebuilding (from
-  Docker's layer cache, so not from scratch, but still redone) on every
-  `.claude/hooks/session-start.sh` run. Until someone does that by hand,
-  every fresh session pays the build cost once.
-- GitHub's API rate-limited anonymous dist downloads through this
-  sandbox's proxy during an earlier `composer update` run (before the
-  Docker approach existed) — composer fell back to cloning from git
-  source successfully; a different sandbox/network may not hit this at
-  all.
+  script** field (claude.ai/code environment dialog — a different
+  mechanism from this repo's `.claude/hooks/session-start.sh`) so the
+  image is cached across sessions instead of rebuilding every time.
+
+Full narrative (the PHP-PPA dead end tried first, the corrected
+"no working daemon" claim, everything ruled out along the way) is in
+`SETUP-LOG.md` — not repeated here on purpose.
+
+## Other known quirks
+
+- GitHub's API rate-limited anonymous dist downloads through an
+  earlier dev sandbox's proxy during a `composer update` run (before
+  the Docker approach existed) — composer fell back to cloning from
+  git source successfully; may not recur elsewhere.
 - `frontend/vite.config.ts` ships `vite-plugin-pwa` with an empty
   `icons: []` — no real app icons exist yet (see the TODO next to it).
   Add 192×192 and 512×512 PNGs before treating the PWA as installable.

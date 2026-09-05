@@ -282,3 +282,23 @@ same as the PPA approach was, just by a single missing domain instead
 of a blocked category. Once that domain is allowed, the real
 `docker compose build` verification `specs/STATUS.md` calls for can
 finally happen.
+
+## 2026-09-05 — Repo content in English; translated what had drifted into German
+
+House rule, made explicit in `CLAUDE.md`: docs, code, comments, and
+commit messages are English regardless of what language a session was
+conducted in. Audited the whole tracked tree for German text (grepped
+for umlauts/German words) and found it had drifted into four files —
+`README.md` (fully German), `frontend/src/App.vue`'s placeholder
+paragraph, `frontend/index.html`'s `lang="de"`, and the PWA manifest's
+`description: 'Fragen für Paare'` in `frontend/vite.config.ts`. All
+translated to English; `script/test-frontend` and `frontend`'s build
+re-verified green afterward.
+
+**Why call this out rather than just fix it silently:** the app's own
+name and its source vision doc are German, so a German end-user UI is
+a plausible real outcome later — this rule is about repo/session
+language, not a decision that the product itself will ship in English.
+Recorded that distinction as an open item in `specs/STATUS.md` rather
+than letting the placeholder text's language quietly stand in for a
+decision nobody's actually made.

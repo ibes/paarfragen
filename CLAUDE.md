@@ -20,6 +20,10 @@ cross-platform shell without touching the API.
   `api/README.md`.
 - **No invented ops facts:** hostnames, URLs, credentials, deploy
   targets — from repo config or the human only.
+- **Repo content is English.** Docs, code, comments, commit messages —
+  English, regardless of what language a session was conducted in. The
+  end-user product's own UI language is a separate, still-open decision
+  (see `specs/STATUS.md` § Open decisions), not covered by this rule.
 - **Setup decisions:** when you make one (a script, a convention, a
   library choice), record it with the `setup-log` skill so
   `SETUP-LOG.md` explains *why*, not just *what*.

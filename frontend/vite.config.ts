@@ -14,7 +14,7 @@ export default defineConfig({
       manifest: {
         name: 'paarfragen',
         short_name: 'paarfragen',
-        description: 'Fragen für Paare',
+        description: 'Questions for couples',
         theme_color: '#ffffff',
         icons: [],
       },

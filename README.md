@@ -1,33 +1,33 @@
 # paarfragen
 
-Eine PWA mit Fragen für Paare. Geplant: zuerst als Progressive Web App,
-später optional als native Cross-Platform-App (gleiches Frontend, in
-einem nativen Container).
+A PWA of questions for couples. Planned: first as a Progressive Web App,
+later optionally as a native cross-platform app (same frontend, wrapped
+in a native container).
 
 ## Layout
 
 ```
-api/         PHP-Backend auf Tempest, hexagonal (Domain / Application / Infrastructure)
-frontend/    Vue 3 + Vite, als PWA gebaut (vite-plugin-pwa)
-specs/       Specs; STATUS.md ist der Einstiegspunkt für jede Session
-script/      Alle Toolchain-Kommandos — siehe script/help
+api/         PHP backend on Tempest, hexagonal (Domain / Application / Infrastructure)
+frontend/    Vue 3 + Vite, built as a PWA (vite-plugin-pwa)
+specs/       Specs; STATUS.md is the entry point for every session
+script/      All toolchain commands — see script/help
 ```
 
-Noch kein Feature-Code — reines Grundgerüst. Nächster Schritt und offene
-Entscheidungen: [`specs/STATUS.md`](specs/STATUS.md).
+No feature code yet — pure skeleton. Next step and open decisions:
+[`specs/STATUS.md`](specs/STATUS.md).
 
-## Los geht's
+## Getting started
 
 ```bash
-script/setup   # Dependencies installieren (api/ + frontend/)
-script/qa      # Tests + Typecheck + Build — der Gate vor jedem Commit
-script/help    # Alle Kommandos mit Beschreibung + Side-effects
+script/setup   # Install dependencies (api/ + frontend/)
+script/qa      # Tests + typecheck + build — the gate before every commit
+script/help    # All commands with description + side-effects
 ```
 
-`api/` braucht PHP **^8.5** (Tempest) — läuft dafür in einem Container
-(`docker-compose.yml` / `.devcontainer/`), nicht auf dem Host. Du brauchst
-also **Docker**, nicht PHP 8.5 lokal installiert. Dasselbe Image ist auch
-der lokale VS-Code-Dev-Container fürs ganze Repo. Details:
+`api/` needs PHP **^8.5** (Tempest) — runs in a container for that
+(`docker-compose.yml` / `.devcontainer/`), not on the host. So you need
+**Docker**, not PHP 8.5 installed locally. The same image is also the
+local VS Code Dev Container for the whole repo. Details:
 `api/README.md`, `specs/STATUS.md`.
 
-Agent-Arbeitsregeln: [`CLAUDE.md`](CLAUDE.md).
+Agent working rules: [`CLAUDE.md`](CLAUDE.md).
