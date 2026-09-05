@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Description: Git pre-commit hook — runs script/check before commit. Runs from .git/hooks/pre-commit after script/hooks/install. Bypass with git commit --no-verify.
+# Side-effects: none (read-only) — invokes script/check.
+set -euo pipefail
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+script/check

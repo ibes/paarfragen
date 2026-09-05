@@ -537,3 +537,18 @@ structural rules and its `literal-named-argument` severity
 downgrade — the first three assume Infrastructure conventions
 paarfragen hasn't chosen yet (would be guessing), and lowering a
 rule's severity contradicts "as strict as possible."
+
+## 2026-09-05 — git pre-commit hook runs script/check
+
+`script/hooks/pre-commit` runs `script/check`; `script/hooks/install`
+copies it into `.git/hooks/pre-commit` (worktree-aware via
+`git rev-parse --git-path hooks`), called from `script/setup`.
+Bypassable with `git commit --no-verify`, same as any git hook.
+
+**Why:** `script/check` already existed as a fast, read-only gate but
+nothing ran it automatically before a commit. Ported from emsig's
+`script/hooks/pre-commit`/`install` near-verbatim — generic bash, no
+adaptation needed beyond the commit message. Verified end-to-end: a
+script missing its header, staged and committed, was blocked with the
+exact check-script-integrity violation before the hook was removed
+again for the real commit.

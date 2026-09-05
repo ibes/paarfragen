@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Description: Dev setup — build the api/ container, install API and frontend dependencies, fetch Mago. Safe to re-run.
-# Side-effects: WRITES api/vendor/, frontend/node_modules/, bin/mago; builds/pulls the api/ Docker image.
+# Description: Dev setup — build the api/ container, install API and frontend dependencies, fetch Mago, install the pre-commit hook. Safe to re-run.
+# Side-effects: WRITES api/vendor/, frontend/node_modules/, bin/mago, .git/hooks/pre-commit; builds/pulls the api/ Docker image.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -13,3 +13,5 @@ echo "Installing frontend dependencies (npm)..."
 echo "Fetching Mago (formatter/linter/analyzer/guard)..."
 script/lib/mago-install
 bin/mago --version
+
+script/hooks/install

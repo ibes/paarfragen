@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Description: Install the git pre-commit hook (runs script/check). Worktree-aware.
+# Side-effects: WRITES — copies script/hooks/pre-commit into the repo's git hooks dir.
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+
+if ! HOOKS_DIR="$(git rev-parse --git-path hooks 2>/dev/null)"; then
+    echo "Not a git repository — skipping hook install." >&2
+    exit 0
+fi
+
+mkdir -p "$HOOKS_DIR"
+cp script/hooks/pre-commit "$HOOKS_DIR/pre-commit"
+chmod +x "$HOOKS_DIR/pre-commit"
+echo "Installed pre-commit hook -> $HOOKS_DIR/pre-commit (runs script/check)"
