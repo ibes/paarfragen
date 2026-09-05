@@ -6,74 +6,57 @@ is the current state, kept short on purpose.
 
 ## Right now
 
-**`production.cloudfront.docker.com` fix confirmed — `docker pull` now
-works.** In this session: `sudo dockerd` (daemon), then `docker pull
-hello-world` succeeded, and `docker compose build api` got past the
-`FROM php:8.5-cli-trixie` / `FROM composer:2` stages (both pulled and
-extracted cleanly). The Docker Hub CDN blocker from the previous
-session is resolved.
+**First fully green `script/qa` for this repo.** `deb.debian.org` and
+`deb.nodesource.com` are now on the environment's Custom network
+allowlist (alongside the already-fixed
+`production.cloudfront.docker.com`). This session confirmed that fix,
+then found and fixed two more layers of blocker that were hiding
+behind it — neither needed a human/policy change:
 
-**New, different blocker found one layer in — same root cause, new
-host: `deb.debian.org` is also not on this environment's network
-allowlist.** The Dockerfile's `apt-get update` (needed to install PHP
-extensions before `docker-php-ext-install`) 403s on every
-`deb.debian.org` source (`trixie`, `trixie-updates`,
-`trixie-security` — this image routes all three through the same
-host, not a separate `security.debian.org`). Confirmed as the
-environment's own egress policy, not a Debian-side or transient issue:
-a direct HTTPS probe to `deb.debian.org:443` from inside the container
-gets a certificate back issued by `O=Anthropic, CN=Egress Gateway SDS
-Issuing CA (production)` for `CN=*.debian.org` — the same interception
-pattern that produced the earlier Docker Hub 403, just gating a
-different domain now that the first one is open.
+1. **Extension bug the network blocker had been masking:**
+   `docker-php-ext-install` was building `pdo_sqlite`, `sqlite3`,
+   `curl`, `dom`, `simplexml`, `readline` as shared extensions, but
+   `php:8.5-cli-trixie` already bundles all of them (`php -m` confirms
+   it) — only `intl` was actually missing. PHP 8.5 ships the others'
+   `config.m4` as `config0.m4` (a stub only the top-level `./buildconf`
+   expands, for extensions meant to be built into core), so `phpize`
+   can't build them standalone and `docker-php-ext-install` failed with
+   "Cannot find config.m4." Fixed: only install `intl` now (see
+   `SETUP-LOG.md`).
+2. **A container-trust gap, not a policy block:** past the apt stage,
+   the Dockerfile's `curl -fsSL https://deb.nodesource.com/...` failed
+   with "self-signed certificate in certificate chain". Verified with
+   `--cacert` against `/root/.ccr/ca-bundle.crt` that nodesource was
+   never blocked (real `200`) — the actual cause, confirmed against
+   every other HTTPS host too (npmjs, github, packagist, even
+   `deb.debian.org` itself over HTTPS), is that plain containers in
+   this sandbox don't trust its TLS-inspecting egress CA for *any*
+   host. `/root/.ccr/README.md`'s "docker build / docker run" section
+   documents this as standard for Claude Code Remote sessions, with
+   the fix it names. Applied it so it's a no-op outside this sandbox:
+   `session-start.sh` now stages `/root/.ccr/ca-bundle.crt` into a
+   gitignored `.devcontainer/session-ca.crt` before the build, and the
+   Dockerfile trusts it only if that file is present. Full details and
+   the exact commands used to verify both: `SETUP-LOG.md`.
+3. One more small, unrelated fix needed to reach green: `npm install -g
+   @ast-grep/cli` collided with Debian's `/usr/bin/sg` — fixed with
+   `--force`.
 
-**Checked ahead, rather than finding this one blocker at a time:**
-probed every external host the full `script/qa` pipeline touches
-(Dockerfile stages + `composer install` + `npm install`), by mounting
-this session's own trusted CA (`/root/.ccr/ca-bundle.crt`) into a
-throwaway container and hitting each host's real endpoint (not just
-`/`, which can 404 harmlessly on API-only hosts) — a 200/302 with real
-content means the egress gateway is passing it through; a 403 with the
-gateway's own intercepted cert (`O=Anthropic, CN=Egress Gateway SDS
-Issuing CA (production)`) means it's still blocked. Two hosts blocked,
-not one:
+**Verified state, this session:** `docker compose build api`,
+`script/test-api`, and `script/qa` all green end-to-end, via
+`session-start.sh`'s own automatic flow (confirmed by re-running it
+from a cold daemon) as well as by hand. No open host or extension
+blocker remains as far as this session found.
 
-| Host | Used for | Status |
-|---|---|---|
-| `production.cloudfront.docker.com` | Docker Hub image pulls | **fixed** (this session) |
-| `deb.debian.org` | apt (`libicu-dev` etc., PHP extension build deps) | **blocked** — 403 |
-| `deb.nodesource.com` | Node 22 apt source (`.devcontainer/Dockerfile`'s node stage, runs right after the PHP‑extensions stage) | **blocked** — 403 |
-| `repo.packagist.org` | composer package metadata | reachable — real `200` |
-| `api.github.com` / `codeload.github.com` | composer dist zipballs (this lock file's packages all dist from GitHub, not Packagist mirrors) | reachable — `302` → `200` |
-| `github.com` | composer VCS fallback, this repo's own git remote | reachable — real `200` |
-| `registry.npmjs.org` | `npm install` (frontend deps + `@ast-grep/cli`) | reachable — real `200` |
-
-**Fix (needs a human, same mechanism as last time):** add both
-`deb.debian.org` **and** `deb.nodesource.com` to this environment's
-Network access settings (Custom level) in the same pass, then start a
-**new session** — network policy is fixed at session start. Adding
-only one would just trade today's blocker for tomorrow's, since the
-Dockerfile hits `deb.debian.org` first and `deb.nodesource.com`
-immediately after.
-
-**First thing to do in that new session:** nothing manual should be
-needed — `.claude/hooks/session-start.sh` now starts the Docker daemon
-itself (see "Docker for `api/`" below) and already runs `docker compose
-build api` + `composer install` + `npm install` on every session
-start. Just check the hook's own output (or re-run `script/test-api`)
-and confirm the build gets past *both* apt stages — don't assume it
-does. If it still 403s on either host, the settings change didn't take
-(not saved, not yet propagated).
-If it fails on a host not in the table above, this same pattern is
-repeating — check which host via the same certificate-issuer probe
-used here (`openssl s_client -connect <host>:443 -servername <host> |
-openssl x509 -noout -issuer -subject`, or for a real pass/fail
-signal rather than just "is it intercepted", mount
-`/root/.ccr/ca-bundle.crt` into a throwaway container and `curl
---cacert` a real endpoint on that host) rather than guessing, then
-report it the same way this entry does. If it fails for a reason
-unrelated to network egress, see "Docker for `api/`" below for what to
-check first (extension names, `trixie` package naming).
+**If a future session hits a build failure again:** don't assume it's
+the network allowlist by default — check first whether it's actually a
+container CA-trust gap (same fix as above, harmless to reapply) or an
+extension/package issue (check `php -m` and the base image's real
+`ext/` contents before assuming a name changed, same approach as
+entry 1). Only fall back to the certificate-issuer / `--cacert` probe
+from the previous version of this entry (kept in `SETUP-LOG.md`) if a
+*new* host is genuinely unreachable even with the gateway's CA
+trusted.
 
 ## Phase
 
@@ -142,55 +125,48 @@ as either side hits a gap.
 
 ## Docker for `api/` — current status
 
-Build-tested for the first time this session; gets further than ever
-before but still not green end-to-end. What's confirmed:
+**Green end-to-end as of this session** — `docker compose build api`,
+`script/test-api`, and `script/qa` all pass. What's confirmed:
 
 - The Docker **daemon itself works** in this dev sandbox (`sudo dockerd`
   directly, not `sudo service docker start` — that init script hits a
-  `ulimit` call this sandbox disallows). **`.claude/hooks/session-start.sh`
-  now starts it automatically** (it wasn't running anything before,
-  despite the hook already assuming `docker info` would just work) —
-  confirmed by running the hook end-to-end from a cold daemon this
-  session. Once the two hosts below are allowed, a fresh session should
-  need no manual step at all: daemon starts, image builds, `composer
-  install`/`npm install` run, all from `session-start.sh` alone.
-- **`production.cloudfront.docker.com` is now allowed** — `docker pull
-  hello-world`, and the `php:8.5-cli-trixie` / `composer:2` base-image
-  pulls inside `docker compose build api`, all succeed.
-- **Blocked on:** the Dockerfile's `apt-get update` (installing PHP
-  extension build deps) 403s on `deb.debian.org` — a *different* host
-  than the Docker CDN one, same environment-allowlist root cause. A
-  second blocked host, `deb.nodesource.com` (Node 22 install, the next
-  Dockerfile stage), was found by checking ahead rather than waiting
-  to hit it in a later session — see "Right now" above for the fix and
-  what only a human can do. Everything past the apt stages that the
-  full pipeline needs — `repo.packagist.org`, `api.github.com` /
-  `codeload.github.com`, `github.com`, `registry.npmjs.org` — was
-  probed directly and is already reachable, so no further host is
-  expected to block once these two are added.
+  `ulimit` call this sandbox disallows). `.claude/hooks/session-start.sh`
+  starts it automatically and, from a cold daemon, takes a fresh session
+  all the way through image build + `composer install` + `npm install`
+  with no manual step — confirmed end-to-end this session.
+- **All three network hosts the build needs are allowed:**
+  `production.cloudfront.docker.com` (Docker Hub pulls),
+  `deb.debian.org` and `deb.nodesource.com` (apt). Everything past the
+  apt stages — `repo.packagist.org`, `api.github.com` /
+  `codeload.github.com`, `github.com`, `registry.npmjs.org` — is
+  reachable too.
+- **Containers don't trust this sandbox's TLS-inspecting egress CA by
+  default** — a standing property of Claude Code Remote sessions
+  (`/root/.ccr/README.md`, "docker build / docker run"), not a policy
+  gap, and it affects any HTTPS call from inside a container regardless
+  of host. `session-start.sh` now stages `/root/.ccr/ca-bundle.crt` into
+  the build context before building, and the Dockerfile trusts it
+  conditionally — a no-op outside this sandbox. See "Right now" above
+  and `SETUP-LOG.md` for the full finding.
+- `docker-php-ext-install` only builds `intl` now — `pdo_sqlite`,
+  `sqlite3`, `curl`, `dom`, `simplexml`, `readline` are already bundled
+  into `php:8.5-cli-trixie` and can't be built standalone on PHP 8.5
+  anyway (see "Right now" above). Confirmed via `php -m` and by testing
+  `docker-php-ext-install` per extension against the extracted PHP
+  source.
 - `docker-compose.yml` parses correctly (`docker compose config`); the
-  Dockerfile's package/extension list is grounded in real sources
-  (Tempest's actual `composer.json` requirements, Docker Hub's real
-  `php:8.5-cli-trixie` tag) — not guessed, but also not yet proven by
-  an actual successful build, since the build still doesn't get past
-  `apt-get update`.
-- Once `deb.debian.org` is unblocked and the build gets further: likely
-  places to check next are an extension name mismatch, or `trixie`
-  (Debian 13) having renamed one of the `-dev` packages installed
-  before `docker-php-ext-install`. Not yet checked because the build
-  hasn't reached that step.
-- `script/qa` was **not** run this session — the build never reached a
-  green state, so per the task's own instruction there was nothing to
-  validate end-to-end yet.
-- Separately, **not yet done and not fixable from inside a session:**
-  add `docker compose build api` to this environment's **Setup
-  script** field (claude.ai/code environment dialog — a different
-  mechanism from this repo's `.claude/hooks/session-start.sh`) so the
-  image is cached across sessions instead of rebuilding every time.
+  Dockerfile's package/extension list is now proven by an actual
+  successful build, not just grounded in Tempest's `composer.json`.
+- Not yet done and not fixable from inside a session: add
+  `docker compose build api` to this environment's **Setup script**
+  field (claude.ai/code environment dialog — a different mechanism from
+  this repo's `.claude/hooks/session-start.sh`) so the image is cached
+  across sessions instead of rebuilding every time.
 
 Full narrative (the PHP-PPA dead end tried first, the corrected
-"no working daemon" claim, everything ruled out along the way) is in
-`SETUP-LOG.md` — not repeated here on purpose.
+"no working daemon" claim, the extension and CA-trust findings,
+everything ruled out along the way) is in `SETUP-LOG.md` — not
+repeated here on purpose.
 
 ## Other known quirks
 

@@ -12,6 +12,10 @@ dist/
 .env.*
 !.env.example
 
+# Written by .claude/hooks/session-start.sh in a Claude Code Remote
+# session only — see .devcontainer/Dockerfile's HAS_SESSION_CA build-arg.
+/.devcontainer/session-ca.crt
+
 # Editor / OS
 .DS_Store
 .idea/

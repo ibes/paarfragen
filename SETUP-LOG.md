@@ -415,3 +415,69 @@ pulls were "allowed under this environment's default network access"
 Custom-allowlist entry for `production.cloudfront.docker.com`. Updated
 it to point at `specs/STATUS.md` for the current, accurate host list
 instead of asserting a fact that turned out to be wrong.
+
+## 2026-09-05 — Dockerfile installed extensions PHP 8.5 already bundles
+
+`docker-php-ext-install` was building `intl`, `pdo_sqlite`, `sqlite3`,
+`curl`, `dom`, `simplexml`, `readline` as shared extensions. `php -m`
+on the base image shows every one but `intl` is already compiled in.
+Trying anyway broke once `apt-get update` finally got past the
+network blocker (see next entry): PHP 8.5 ships `sqlite3`/`curl`/`dom`/
+`simplexml`/`readline`'s `ext/*/config.m4` as `config0.m4` — a stub
+only the top-level `./buildconf` turns into `config.m4`, for
+extensions meant to be bundled into core rather than built standalone
+— so `phpize` can't find a config.m4 for them and
+`docker-php-ext-install` fails with "Cannot find config.m4."
+Reproduced by extracting `docker-php-source` and running
+`docker-php-ext-install` one extension at a time.
+
+**Fix:** only install `intl` (the one genuinely missing extension),
+and dropped the now-unneeded apt packages (`libsqlite3-dev`,
+`libxml2-dev`, `libcurl4-openssl-dev`, `libreadline-dev`) — only
+`libicu-dev` remains. This is what got `docker compose build api`
+past the extension stage for the first time; the network blocker had
+masked this bug in every prior attempt.
+
+## 2026-09-05 — First green `script/qa`: a container-trust gap, not a policy block, was the last blocker
+
+With `deb.debian.org` and `deb.nodesource.com` newly allowlisted, the
+build reached `apt-get update` (works — Debian's own sources.list here
+is plain `http://`, no TLS involved) but then failed on the
+Dockerfile's `curl -fsSL https://deb.nodesource.com/... | bash` step
+with "self-signed certificate in certificate chain". Verified via
+`openssl s_client` and by mounting `/root/.ccr/ca-bundle.crt` into a
+throwaway container and curling with `--cacert`: nodesource returns a
+real HTTP 200 once the gateway's CA is trusted — never blocked.
+Checked further and found the same failure, `--cacert` or not, against
+every HTTPS host tried from inside a plain container — including ones
+already confirmed reachable (`registry.npmjs.org`, `api.github.com`,
+`repo.packagist.org`, even `deb.debian.org` itself over HTTPS). That
+ruled out a per-host policy gap: `/root/.ccr/README.md`'s own "docker
+build / docker run" section documents exactly this as a standing
+property of Claude Code Remote sandboxes — containers can't reach the
+session's local proxy or trust its CA — and names the fix. Without it,
+`composer install`/`npm install` inside the `api` container would have
+hit the identical wall the moment the build got that far, regardless
+of any allowlist change.
+
+**Fix, kept portable so it's a no-op outside this sandbox:**
+`session-start.sh` now writes `/root/.ccr/ca-bundle.crt` to a gitignored
+`.devcontainer/session-ca.crt` before building and passes a
+`HAS_SESSION_CA` build-arg (a flag only — the PEM text itself goes
+through the copied file, not the build-arg, because passing the full
+certificate as a `--build-arg` value overflowed the shell's argument
+list). The Dockerfile's `COPY .devcontainer/session-ca.cr[t] ...` glob
+is a no-op when the file doesn't exist, and `update-ca-certificates`
+only runs when the flag is set — so a real, non-sandbox build never
+touches any of this. Also pointed `NODE_EXTRA_CA_CERTS` at the same
+file, since Node keeps its own bundled CA list and ignores the system
+trust store update.
+
+One more, unrelated, fix needed to reach a clean run: `npm install -g
+@ast-grep/cli` collided with Debian's own `/usr/bin/sg` (the
+`login`/shadow-utils "run as a different group" command). Fixed with
+`--force` — ast-grep's `sg` is what this image's shell is meant to
+expose at that name.
+
+**End state:** `docker compose build api`, `script/test-api`, and
+`script/qa` are all green for the first time ever in this repo.
