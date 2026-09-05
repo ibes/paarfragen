@@ -1,0 +1,22 @@
+# PHP (api/)
+/api/vendor/
+/api/.phpunit.cache/
+/api/composer.phar
+
+# Node (frontend/ has its own .gitignore too; these cover anything at root)
+node_modules/
+dist/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Claude Code local overrides
+.claude/settings.local.json

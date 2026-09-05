@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Description: Dev setup — install API and frontend dependencies. Safe to re-run.
+# Side-effects: WRITES api/vendor/, frontend/node_modules/.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+echo "Installing API dependencies (composer)..."
+(cd api && composer install --no-interaction)
+
+echo "Installing frontend dependencies (npm)..."
+(cd frontend && npm install)

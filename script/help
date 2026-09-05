@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Description: List script/* commands with Description, Side-effects, and Docs from each header.
+# Side-effects: none (read-only).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+if [[ -t 1 ]]; then
+    BOLD=$'\033[1m'
+    DIM=$'\033[2m'
+    CYAN=$'\033[36m'
+    GREEN=$'\033[32m'
+    YELLOW=$'\033[33m'
+    BLUE=$'\033[34m'
+    RESET=$'\033[0m'
+else
+    BOLD='' DIM='' CYAN='' GREEN='' YELLOW='' BLUE='' RESET=''
+fi
+
+color_side_effects() {
+    local se=$1
+    if [[ "$se" == *WRITES* ]]; then
+        printf '%s%s%s' "$YELLOW" "$se" "$RESET"
+    elif [[ "$se" == *depends* ]]; then
+        printf '%s%s%s' "$BLUE" "$se" "$RESET"
+    elif [[ "$se" == *read-only* || "$se" == none* ]]; then
+        printf '%s%s%s' "$GREEN" "$se" "$RESET"
+    else
+        printf '%s' "$se"
+    fi
+}
+
+printf '\n%sscripts%s %s(from script/*/ headers)%s\n' \
+    "$BOLD" "$RESET" "$DIM" "$RESET"
+
+for f in "$(dirname "$0")"/*; do
+    [[ -f "$f" ]] || continue
+    name=$(basename "$f")
+    description=$(grep -m1 '^# Description:' "$f" | sed 's/^# Description: //' || true)
+    side_effects=$(grep -m1 '^# Side-effects:' "$f" | sed 's/^# Side-effects: //' || true)
+    docs=$(grep -m1 '^# Docs:' "$f" | sed 's/^# Docs: //' || true)
+    [[ -n "$description" && -n "$side_effects" ]] || continue
+    printf '\n  %sscript/%s%s\n' "$CYAN$BOLD" "$name" "$RESET"
+    printf '    %s\n' "$description"
+    printf '    %sSide-effects:%s ' "$DIM" "$RESET"
+    color_side_effects "$side_effects"
+    printf '\n'
+    [[ -n "$docs" ]] && printf '    %sDocs:%s %s\n' "$DIM" "$RESET" "$docs"
+done
+
+printf '\n%s  Run: script/<name> [args]   Example: script/qa%s\n' "$DIM" "$RESET"
+printf '%s  WRITES needs a human OK unless already asked. Made a setup decision?%s\n' \
+    "$DIM" "$RESET"
+printf '%s  Use the setup-log skill. Why past decisions happened: SETUP-LOG.md%s\n' \
+    "$DIM" "$RESET"
