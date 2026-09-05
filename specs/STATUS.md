@@ -63,6 +63,18 @@ assume the vision doc is ready to build as-is.
   `script/setup` and `script/qa` will correctly refuse in any PHP 8.4
   environment (composer's own platform-requirement error) — that's
   expected, not a bug. Needs a real PHP 8.5 machine or CI to validate.
+  `.claude/hooks/session-start.sh` tries `apt-get install php8.5-cli`
+  from the same `ondrej/php` PPA this image's own PHP 8.4 was built
+  from — confirmed working when that image itself was built, but
+  confirmed **blocked (403)** when run live from inside this specific
+  Claude Code web session (network egress policy denies
+  `ppa.launchpadcontent.net` at runtime, even though it's reachable at
+  image-build time). The hook degrades gracefully either way (skips
+  `composer install`, still installs frontend deps + CLI tools). If
+  your environment's network policy allows that PPA, the hook installs
+  PHP 8.5 and `api/` tests actually run — check the environment's
+  network settings if you want that:
+  https://code.claude.com/docs/en/claude-code-on-the-web
 - GitHub's API rate-limited anonymous dist downloads through this
   sandbox's proxy during that same composer run (unrelated to the PHP
   version issue) — composer fell back to cloning from git source

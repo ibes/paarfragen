@@ -135,3 +135,41 @@ should write its output (a directory tree straight into
 across the sibling-folder boundary). Asked the human directly; answer
 was to defer until real DTOs exist to generate from, rather than commit
 to a directory layout with nothing to test it against yet.
+
+## 2026-09-05 — `.claude/hooks/session-start.sh`: CLI tools + best-effort PHP 8.5
+
+Used the `session-start-hook` skill to add a `SessionStart` hook
+(`.claude/hooks/session-start.sh` + `.claude/settings.json`), following
+the same "efficient CLI tools" idea as `redlich`'s `.devcontainer/Dockerfile`
+(`rg`/`fd`/`jq`/`tree`/`sqlite3`/`shellcheck`/`httpie`/`ast-grep`) —
+adapted to a hook instead of a Docker build, since Claude Code on the
+web sessions here aren't devcontainer-based. `rg` already ships with
+this image; the rest install from Ubuntu's default archive (not a PPA)
+and were confirmed to install cleanly. `redlich`'s `gh` and `git-delta`
+steps were dropped: `gh`'s own apt source (`cli.github.com`) and
+arbitrary GitHub release downloads both hit this session's network
+restrictions (see below) — not worth carrying a step that's known to
+fail here.
+
+Also has the hook attempt `apt-get install php8.5-cli` (Tempest's
+requirement) from the same `ondrej/php` PPA this very image's PHP 8.4
+was itself built from. **Confirmed by running the hook live:** that
+install is blocked (403) from inside a running session — this
+environment's network egress policy denies `ppa.launchpadcontent.net`
+at runtime, even though the identical PPA was clearly reachable when
+this base image was built (its PHP 8.4 package is a `+deb.sury.org`
+build from that exact PPA). Build-time and session-runtime network
+access are evidently not the same policy. Left the step in anyway
+(harmless — fails soft, doesn't block the rest of the hook) since it
+depends on the environment's own network policy, not anything this
+repo controls; documented the confirmed failure mode in
+`specs/STATUS.md` rather than claiming it works.
+
+**Why not chase this further right now:** getting `api/` to actually
+run in a Claude Code web session either needs the environment's network
+policy opened up for that PPA (a human, environment-level setting, not
+a repo change), or a properly maintained static PHP 8.5 binary from a
+trustworthy source — didn't want to pull an unvetted binary from a
+random GitHub repo (also blocked here anyway: this session's GitHub
+proxy 403'd a release-asset download from a repo outside its scoped
+list). Revisit if/when the environment's network policy changes.
