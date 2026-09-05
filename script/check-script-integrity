@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# Description: Verify every script/* has a Description + Side-effects header, and that any Docs path it points to actually resolves — so a script can't silently vanish from script/help.
+# Side-effects: none (read-only).
+set -Eeuo pipefail
+trap 'exit 2' ERR
+cd "$(dirname "$0")/.."
+
+# shellcheck source=script/lib/check-contract.sh
+source script/lib/check-contract.sh
+
+violations='[]'
+
+for f in script/*; do
+    [[ -f "$f" ]] || continue
+    name=$(basename "$f")
+
+    description=$(grep -m1 '^# Description:' "$f" || true)
+    side_effects=$(grep -m1 '^# Side-effects:' "$f" || true)
+    if [[ -z "$description" || -z "$side_effects" ]]; then
+        violations=$(jq --arg file "script/$name" \
+            '. + [{file: $file, line: 1, message: "missing Description and/or Side-effects header"}]' <<<"$violations")
+    fi
+
+    docs=$(grep -m1 '^# Docs:' "$f" | sed 's/^# Docs: //' || true)
+    [[ -z "$docs" ]] && continue
+    target="${docs%% *}"
+    # Only path-like targets are mechanically checkable — a URL or freeform
+    # prose passes through unchecked.
+    if [[ "$target" == */* && "$target" != http://* && "$target" != https://* && "$target" != /* ]] \
+        && [[ ! -e "$target" ]]; then
+        violations=$(jq --arg file "script/$name" --arg target "$target" \
+            '. + [{file: $file, line: 1, message: ("Docs points to a path that does not exist: " + $target)}]' <<<"$violations")
+    fi
+done
+
+if [[ $(jq 'length' <<<"$violations") -eq 0 ]]; then
+    contract_emit clean "$violations" "every script/* has Description + Side-effects (and any Docs path resolves)"
+fi
+contract_emit red "$violations"
