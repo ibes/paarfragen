@@ -197,3 +197,31 @@ would back `/housekeeping`.
 structure for a review cadence to hook into. Revisit once either file
 is long enough that "just read it" stops scaling, or once a
 slice/phase system exists to anchor the cadence to.
+
+## Reka UI for interactive widgets that are hard to get right by hand
+
+**What:** [Reka UI](https://reka-ui.com) (formerly Radix Vue) —
+headless, unstyled accessible component primitives (Dialog, Popover,
+Select, Tabs, Accordion, …). Unlike shadcn-vue (discussed and rejected
+for now, same reasoning below), it's a plain npm dependency, not a
+Tailwind-coupled copy-into-your-repo workflow — no CSS framework
+commitment, adopt one primitive at a time, bring your own styling.
+**Why it might matter:** focus management, ARIA semantics, and
+keyboard navigation for things like modals/dialogs are exactly the
+kind of code that's both easy to get subtly wrong by hand and hard to
+verify correct just by reading a diff — a widely-used, tested
+primitive shifts that risk from "trust the diff" to "trust a library."
+**Rough shape:** add as a normal `frontend/package.json` dependency
+the first time a specific hard-to-get-right widget is actually needed;
+import just that primitive, style it with this project's own CSS via
+Reka UI's data-attribute styling hooks.
+**Not now because:** `specs/exploration-mode.md`'s screen layout is
+four rating buttons, a text field, a "Next" button, and a small
+feedback entry point — all native `<button>`/`<input>` elements,
+already accessible for free, no Dialog/Select/Popover/Tabs/Accordion
+anywhere in the current design. **Concrete trigger to watch for:** if
+the "small, always-reachable feedback entry point" ever becomes an
+actual modal/dialog (rather than an inline panel or separate route),
+that's the first real use case — Reka UI's Dialog primitive handles
+focus-trap/Escape/`aria-modal` correctly where a hand-rolled one is
+easy to get wrong.
