@@ -33,10 +33,12 @@ cross-platform shell without touching the API.
   library choice), record it with the `setup-log` skill so
   `SETUP-LOG.md` explains *why*, not just *what*.
 - **Friction or a good-but-premature idea:** don't just let it
-  evaporate. Something annoying/surprising just now → one line in
-  `FRICTION.md`. A real tool/pattern that solves a problem this repo
-  doesn't have yet → an entry in `IDEAS.md`. Neither blocks anything;
-  both exist so nobody re-derives the same thing later.
+  evaporate. Something annoying/surprising just now → log it with the
+  `friction` skill (one line in `FRICTION.md`) — don't wait to be
+  asked, and don't wait for it to visibly break something. A real
+  tool/pattern that solves a problem this repo doesn't have yet → an
+  entry in `IDEAS.md`. Neither blocks anything; both exist so nobody
+  re-derives the same thing later.
   Do the `FRICTION.md` line *first*, even when a considered `IDEAS.md`
   entry is about to follow right behind it — a fix idea for a gap
   doesn't close the gap, so the friction entry stays open (cross-

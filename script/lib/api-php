@@ -8,7 +8,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-if ! docker info >/dev/null 2>&1; then
+# shellcheck source=script/lib/ensure-dockerd.sh
+source script/lib/ensure-dockerd.sh
+if ! ensure_dockerd; then
   echo "Docker isn't available/running here — api/ needs it for PHP 8.5 (Tempest)." >&2
   echo "See specs/STATUS.md for what this depends on in a Claude Code cloud session." >&2
   exit 1

@@ -43,25 +43,12 @@ npm install -g @ast-grep/cli \
   || echo "WARNING: ast-grep install failed — continuing anyway."
 
 echo "== session-start: docker daemon =="
-if docker info >/dev/null 2>&1; then
-  echo "Docker daemon already running."
+# shellcheck source=script/lib/ensure-dockerd.sh
+source script/lib/ensure-dockerd.sh
+if ensure_dockerd; then
+  echo "Docker daemon running."
 else
-  # `sudo service docker start` fails here — its init script hits a
-  # `ulimit` call this sandbox disallows. `sudo dockerd` directly works
-  # fine; it just isn't started by anything automatically. See
-  # SETUP-LOG.md ("Correction: the daemon works; the real blocker is one
-  # CDN host").
-  sudo nohup dockerd >/var/log/dockerd-session-start.log 2>&1 &
-  disown
-  for _ in $(seq 1 15); do
-    docker info >/dev/null 2>&1 && break
-    sleep 1
-  done
-  if docker info >/dev/null 2>&1; then
-    echo "Docker daemon started."
-  else
-    echo "WARNING: dockerd didn't come up within 15s — see /var/log/dockerd-session-start.log."
-  fi
+  echo "WARNING: dockerd didn't come up within 15s — see /var/log/dockerd-session-start.log."
 fi
 
 echo "== session-start: api/ container (PHP 8.5 for Tempest) =="

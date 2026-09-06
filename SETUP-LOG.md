@@ -746,3 +746,33 @@ repos existing beside it. Fixed by adding this repo's own
 the `/kaizen` cross-reference and `script/worktree rm` — paarfragen has
 neither a kaizen skill nor a worktree script; plain `git worktree
 remove` instead).
+
+## 2026-09-06 — `friction` skill, own `setup-log` skill, `dockerd` self-heal
+
+Human asked for a skill that recognizes friction on its own and logs it
+to `FRICTION.md` — added `.claude/skills/friction/SKILL.md`: concrete
+noticing cues (failed command, hand-re-derived fact, doc/reality
+mismatch, repeated manual sequence, assumed-but-missing convention),
+a dedup step against existing `FRICTION.md`/`SETUP-LOG.md` entries
+before appending, and the existing "log friction before writing an
+idea" ordering rule. Deliberately just a skill, not the ledger/CLI/
+review-cadence machinery `IDEAS.md`'s "Extended harvest" entry
+describes — that's still premature.
+
+While wiring `CLAUDE.md`'s "Setup decisions" bullet to a same-named
+skill, found `setup-log` had the identical gap `housekeeping` had:
+referenced by name, resolving only via redlich's `.claude/skills/`
+on disk. Added paarfragen's own copy, same reasoning as the
+`housekeeping` fix above.
+
+Used the new `friction` skill immediately and it caught a real,
+already-recurring one: `dockerd` had needed a manual `sudo nohup
+dockerd` restart mid-session twice already today (session-start.sh
+only starts it once, at session start) — logged, then fixed per
+`VALUES.md` (recurring friction, high priority, same turn) rather than
+left open. Extracted `ensure_dockerd()` into
+`script/lib/ensure-dockerd.sh`, sourced by both `session-start.sh` and
+`script/lib/api-php` (the single chokepoint every Docker call already
+went through) so any Docker call self-heals instead of just failing
+with a static message. Verified by killing `dockerd` mid-session and
+confirming `script/lib/api-php php -v` self-healed and still ran.
