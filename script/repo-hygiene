@@ -35,7 +35,7 @@ if [[ "$upstream" != none && "$ahead" -gt 0 ]]; then
     findings+=("🟡 unpushed-commits — $ahead commit(s) ahead of $upstream")
 fi
 while read -r other; do
-    [[ -z "$other" || "$other" == "$branch" ]] && continue
+    [[ -z "$other" || "$other" == "$branch" || "$other" == main ]] && continue
     if git merge-base --is-ancestor "$other" main 2>/dev/null; then
         findings+=("🟡 stale-merged-branch — '$other' is fully merged into main, safe to delete")
     fi
