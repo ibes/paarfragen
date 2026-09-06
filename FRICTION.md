@@ -111,6 +111,15 @@ using `run_in_background: true`, pass the plain foreground command
 (`script/dev-api`, no trailing `&`, no output redirection) and let the
 tool handle backgrounding itself — never combine the two.
 
+**Recurred same session:** starting `npm run preview` for Slice 5's
+own live PWA verification, immediately after logging this — same
+`command > log 2>&1 &` plus `run_in_background: true` combination,
+same misleading "exited" report. Self-caught on the very next attempt
+this time (recognized the pattern instead of re-diagnosing from
+scratch), but the mistake itself still happened once more — the "would
+help" above evidently isn't front-of-mind enough by itself; worth
+extra care the next few times this comes up.
+
 ## 2026-09-06 — A service worker's `active`/`controller` state doesn't mean Workbox's precache install has finished
 
 Live-verifying Slice 5's PWA offline behavior via Playwright: waiting
