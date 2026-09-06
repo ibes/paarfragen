@@ -225,3 +225,31 @@ that's the first real use case — Reka UI's Dialog primitive handles
 focus-trap/Escape/`aria-modal` correctly where a hand-rolled one is
 easy to get wrong.
 
+## Semantic review skills for hexagon/Tempest drift, once real code exists
+
+**What:** `mago.toml`'s guard already catches *structural* violations
+(an `Infrastructure` class importing a `Domain` namespace, wrong
+visibility). It can't catch *semantic* drift: business logic sitting in
+a controller instead of the domain, a domain entity thrown as a
+framework exception, a Tempest `Request`/view-object convention
+followed inconsistently. A pair of thin skills — `hexagon-check` and
+`tempest-check` — each apply a short fail-conditions/pass-looks-like
+checklist to the current diff, report file+line+why, and explicitly
+don't refactor unasked.
+**Why it might matter:** exactly the two conventions this repo has
+already committed to (`CLAUDE.md`'s hexagonal-architecture rule, the
+Tempest framework choice) — the two places drift would matter most and
+Mago structurally can't see.
+**Rough shape:** a `agent/reviews/hexagon.md` / `agent/reviews/
+tempest.md` checklist doc each, plus a skill that's little more than
+"apply this checklist to the diff." Seen working elsewhere (emsig) as
+exactly this shape, before losing access to that repo — but its actual
+checklist entries are that app's own conventions (a `Guide/{Screen}/`
+module layout, `PublicIdEncoder`, specific view-object naming), not
+Tempest conventions in general, so the checklist itself has to be
+written fresh from this repo's own Infrastructure code, not copied.
+**Not now because:** `api/src/Domain`, `Application`, and
+`Infrastructure` are still empty `.gitkeep` placeholders — a
+drift-checklist needs real Infrastructure code to observe conventions
+from, the same reasoning as the Mago DTO-rules entry above.
+

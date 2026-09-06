@@ -776,3 +776,34 @@ left open. Extracted `ensure_dockerd()` into
 went through) so any Docker call self-heals instead of just failing
 with a static message. Verified by killing `dockerd` mid-session and
 confirming `script/lib/api-php php -v` self-healed and still ran.
+
+## 2026-09-06 — Audited for more silent redlich/emsig infrastructure
+
+Human asked whether anything else currently only works because
+redlich/emsig happen to be mounted beside this repo (won't be true next
+session). Checked skills, subagent types, hooks, MCP config, and
+leftover text references.
+
+**Found, not fixed (deliberately):** several other skills
+(`tempest-check`, `hexagon-check`, `bug-report`, `grill-me`, `kaizen`,
+`pre-review`, `slice-gate`, `build-loop` from emsig; `spec` from
+redlich) and three emsig subagent types (`emsig-verifier`,
+`review-subagent`, `status-scout`) currently show up as "available" in
+this session too. Unlike `housekeeping`/`setup-log`, these don't
+silently produce plausible-but-wrong output if invoked here — they
+point at relative paths only their home repo has (`agent/reviews/
+*.md`, `data/runner/`, `specs/TRACKS.md`) and would fail loudly. They
+also weren't actually used anywhere in this repo's own history. Nothing
+to port: they'll simply stop appearing once redlich/emsig access ends,
+which is the correct outcome, not a regression. Preserved the one
+genuinely reusable pattern — `hexagon-check`/`tempest-check`'s
+"structural guard misses semantic drift, so pair it with a checklist
+skill" idea — in `IDEAS.md`, since that insight would otherwise be lost
+along with the access.
+
+**Confirmed clean:** hooks are scoped per repo's own `.claude/
+settings.json` via `CLAUDE_PROJECT_DIR` (redlich's hooks never actually
+ran against this repo); no `.mcp.json` or user-level settings reference
+either sibling; a full grep of this repo's own tracked files turns up
+`redlich`/`emsig` only in `SETUP-LOG.md`'s own historical entries, which
+is what that file is for.
