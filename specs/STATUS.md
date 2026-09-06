@@ -64,15 +64,12 @@ trusted.
 Tempest, `frontend/` Vue/Vite PWA), no product code yet, no spec
 written.
 
-A `VISION/`-style pre-spec input exists upstream, in the `redlich`
-sibling repo:
-[`paarfrage-exploration-mode.md`](https://github.com/ibes/redlich/blob/main/VISION/paarfrage-exploration-mode.md) —
+A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
 identity, no accounts. It's a design input, not a spec: restate what's
-needed from it into a real spec here before building against it (same
-rule `redlich`'s own `VISION/README.md` states — specs restate, never
-cite by path). It says nothing about tech stack; every stack decision
-below came from the human directly.
+needed from it into a real spec here before building against it. It
+says nothing about tech stack; every stack decision below came from
+the human directly.
 
 ## Next step
 
@@ -109,16 +106,17 @@ as either side hits a gap.
 - **Where `generate:typescript-types` (Tempest → TS type generation,
   `specs/api.md`) writes its output** — deferred until real
   Infrastructure DTOs exist to generate from.
-- **Auth model** for two people sharing a question deck. Vision doc
+- **Auth model** for two people sharing a question deck. `specs/exploration-mode.md`
   proposes a hardcoded, opaque `deck_id` bearer token (no login) for
   its exploration stage — not yet confirmed for this repo.
-- **Data storage** — nothing wired yet. Vision doc sketches
-  `questions` / `question_feedback` / `app_feedback` tables; needs a
-  spec before becoming schema.
-- **Deploy target's actual PHP version** — assumed ^8.5 somewhere real
-  (matching `emsig`'s toolchain), not confirmed.
+- **Data storage** — nothing wired yet. `specs/exploration-mode.md`
+  sketches `questions` / `question_feedback` / `app_feedback` tables;
+  needs a spec before becoming schema.
+- **Deploy target's actual PHP version** — assumed ^8.5 (PHP 8.5 is
+  confirmed to run this exact stack, Tempest `^3.0`, successfully in a
+  real deployment elsewhere), not confirmed for this repo's own target.
 - **End-user UI language** — repo content is English by house rule,
-  but the product's name and source vision doc are German; a
+  but the product's name and its original design input are German; a
   German-language UI is plausible but not decided. Current placeholder
   frontend text is English only because it's a placeholder. Decide
   before writing real UI copy.

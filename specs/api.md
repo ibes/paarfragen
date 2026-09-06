@@ -6,12 +6,10 @@ place rather than freezing it early. Once a real slice spec exists for
 this feature (see `STATUS.md`), that spec is the source of truth for
 scope/Done; this file stays the shared interface both sides code to.
 
-Restates (in this repo's own words, not by reference — the source can
-shrink or change independently) the API sketched in
-[`ibes/redlich`'s `paarfrage-exploration-mode.md`](https://github.com/ibes/redlich/blob/main/VISION/paarfrage-exploration-mode.md).
-Where this doc adds something that vision doc didn't specify (the error
-shape, below), it's called out explicitly as this repo's own decision,
-not carried over from there.
+Restates, with implementation-level detail, the API sketched in
+[`specs/exploration-mode.md`](exploration-mode.md)'s "API" section.
+Where this doc adds something that doc didn't specify (the error
+shape, below), it's called out explicitly as this repo's own decision.
 
 ## Conventions
 
@@ -167,5 +165,5 @@ until real DTOs exist and get built against a spec:
 - `200` vs `201`/`204` on the two write-only endpoints above.
 - Rate limiting / abuse handling on `POST /generate-question` (an LLM
   call an anonymous `deck_id` can trigger freely) — out of scope for
-  exploration mode per the source vision doc, but worth a line in a
-  real spec before this goes anywhere near production.
+  exploration mode per `specs/exploration-mode.md`, but worth a line
+  in a real spec before this goes anywhere near production.

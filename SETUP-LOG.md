@@ -11,13 +11,13 @@ to be re-derived or re-litigated later.
 
 Two independent projects, each with its own dependency manifest
 (`api/composer.json`, `frontend/package.json`), rather than one Tempest
-app serving both API and server-rendered views (as `emsig` does).
+app serving both API and server-rendered views.
 
 **Why:** the frontend is meant to become a PWA now and get wrapped in a
 native cross-platform shell (e.g. Capacitor) later, without the API
-changing. Coupling them into one framework's request/view cycle (like
-emsig's Tempest+Vite setup) would make that split harder later, not
-easier. Also deliberate: it keeps the two test suites — phpunit for
+changing. Coupling them into one framework's request/view cycle would
+make that split harder later, not easier. Also deliberate: it keeps the
+two test suites — phpunit for
 `api/`, a JS/TS runner for `frontend/` — fully separate, each runnable
 (and green/red) on its own, not interleaved in one framework's test run.
 
@@ -27,7 +27,7 @@ easier. Also deliberate: it keeps the two test suites — phpunit for
 directories (`.gitkeep`); `composer.json` requires only `php` +
 `phpunit`.
 
-**Why:** `emsig` (sibling repo, same author) uses Tempest, but Tempest
+**Why:** Tempest was the leading framework candidate, but Tempest
 `^3.0` requires PHP `^8.5` and this environment only has PHP 8.4.19
 installed — couldn't verify an install here. Rather than pick a
 framework untested in this environment, left it open in
@@ -40,9 +40,8 @@ to start being written anyway.
 Every `script/*` file carries `# Description:` and `# Side-effects:`
 header comments; `script/help` greps them to generate the command list.
 
-**Why:** copied from `emsig`/`redlich` (same author, same convention) —
-the header *is* the documentation, so it can't drift out of sync with a
-separately maintained doc.
+**Why:** the header *is* the documentation, so it can't drift out of
+sync with a separately maintained doc.
 
 ## 2026-09-05 — Agent-first meta files added before any product code
 
@@ -52,20 +51,19 @@ Domain/Application/Infrastructure code or frontend UI.
 
 **Why:** requested explicitly — the app itself stays a minimal skeleton
 for now, but the working conventions (specs first, `script/qa` as the
-gate, decisions logged here) should be in place from the first commit,
-matching how `emsig`/`redlich` operate.
+gate, decisions logged here) should be in place from the first commit.
 
 ## 2026-09-05 — Framework decision resolved: Tempest (superseding the open item above)
 
-Human decided: Tempest, same as `emsig`. `api/composer.json` now requires
+Human decided: Tempest. `api/composer.json` now requires
 `php: ^8.5` and `tempest/framework: ^3.0`; `dev-require` phpunit bumped to
-`^13.3@dev` to match the version `emsig` already runs successfully on
-PHP 8.5 (untested combinations felt riskier to guess at than copying a
-known-working pair). Added `api/public/index.php` with the same
-`HttpApplication::boot()` entrypoint `emsig` uses, and `api/.env.example`
-with the same minimal keys (`SIGNING_KEY`, `APPLICATION_NAME`,
-`BASE_URI`, `ENVIRONMENT`) — no feature routes yet, that's still gated on
-a spec.
+`^13.3@dev` to match a version already confirmed to run successfully on
+PHP 8.5 elsewhere (untested combinations felt riskier to guess at than
+copying a known-working pair). Added `api/public/index.php` with
+Tempest's standard `HttpApplication::boot()` entrypoint, and
+`api/.env.example` with the minimal keys Tempest needs (`SIGNING_KEY`,
+`APPLICATION_NAME`, `BASE_URI`, `ENVIRONMENT`) — no feature routes yet,
+that's still gated on a spec.
 
 **Couldn't fully verify here:** this sandbox has PHP 8.4.19, not the
 required 8.5 — `composer install` correctly refuses on this platform, so
@@ -80,9 +78,9 @@ on a machine or CI with PHP 8.5 — see `specs/STATUS.md` § Known quirks.
 
 **Sibling `api/`/`frontend/` folders confirmed, not reconsidered:** Tempest
 here runs purely as a JSON API (no views, no `vite-plugin-tempest`) — the
-"couple frontend+backend into one Tempest app like emsig" alternative
-was already rejected in the split decision above, and picking Tempest
-doesn't change that reasoning.
+"couple frontend+backend into one Tempest app" alternative was already
+rejected in the split decision above, and picking Tempest doesn't
+change that reasoning.
 
 ## 2026-09-05 — `script/test-api` + `script/test-frontend` split out of `script/qa`
 
@@ -102,22 +100,20 @@ source layout.
 
 ## 2026-09-05 — `specs/api.md`: draft API contract ahead of the first slice spec
 
-Restated the five endpoints from `redlich`'s `paarfrage-exploration-mode.md`
-vision doc into a standalone, living contract doc — not a locked spec,
-explicitly marked as such at the top of the file. Added one thing that
-doc didn't specify (a generic `{"error":{"message":...}}` shape),
-flagged inline as this repo's own unconfirmed addition rather than
-carried over from the source.
+Restated the five endpoints from the exploration-mode design input
+(`specs/exploration-mode.md`) into a standalone, living contract doc —
+not a locked spec, explicitly marked as such at the top of the file.
+Added one thing that doc didn't specify (a generic
+`{"error":{"message":...}}` shape), flagged inline as this repo's own
+unconfirmed addition rather than carried over from the source.
 
 **Why:** `api/` and `frontend/` are separate projects on separate
 toolchains (see the two split decisions above) — a written contract is
 what lets them actually be built in parallel against the same interface
 instead of one side blocking on the other's code. Kept as Markdown, not
-OpenAPI/YAML: matches this ecosystem's house style (`redlich`/`emsig`
-specs are prose, not schemas) and is cheaper to keep "fluid, revisable"
-the way the source vision doc explicitly wants exploration mode to be.
-Revisit as OpenAPI later if codegen (TS types, request validation)
-becomes worth the added rigor.
+OpenAPI/YAML: prose is cheaper to keep "fluid, revisable" the way
+exploration mode explicitly wants to be. Revisit as OpenAPI later if
+codegen (TS types, request validation) becomes worth the added rigor.
 
 ## 2026-09-05 — Tempest's TypeScript generation documented, not wired up
 
@@ -139,17 +135,16 @@ to a directory layout with nothing to test it against yet.
 ## 2026-09-05 — `.claude/hooks/session-start.sh`: CLI tools + best-effort PHP 8.5
 
 Used the `session-start-hook` skill to add a `SessionStart` hook
-(`.claude/hooks/session-start.sh` + `.claude/settings.json`), following
-the same "efficient CLI tools" idea as `redlich`'s `.devcontainer/Dockerfile`
+(`.claude/hooks/session-start.sh` + `.claude/settings.json`) that
+installs a set of efficient CLI tools
 (`rg`/`fd`/`jq`/`tree`/`sqlite3`/`shellcheck`/`httpie`/`ast-grep`) —
-adapted to a hook instead of a Docker build, since Claude Code on the
-web sessions here aren't devcontainer-based. `rg` already ships with
-this image; the rest install from Ubuntu's default archive (not a PPA)
-and were confirmed to install cleanly. `redlich`'s `gh` and `git-delta`
-steps were dropped: `gh`'s own apt source (`cli.github.com`) and
-arbitrary GitHub release downloads both hit this session's network
-restrictions (see below) — not worth carrying a step that's known to
-fail here.
+a hook rather than a Docker build, since Claude Code on the web
+sessions here aren't devcontainer-based. `rg` already ships with this
+image; the rest install from Ubuntu's default archive (not a PPA) and
+were confirmed to install cleanly. `gh` and `git-delta` were left out:
+`gh`'s own apt source (`cli.github.com`) and arbitrary GitHub release
+downloads both hit this session's network restrictions (see below) —
+not worth carrying a step that's known to fail here.
 
 Also has the hook attempt `apt-get install php8.5-cli` (Tempest's
 requirement) from the same `ondrej/php` PPA this very image's PHP 8.4
@@ -202,7 +197,7 @@ Docker Hub tag, not guessed) with the PHP extensions `tempest/framework`'s
 own `composer.json` actually requires (ext-dom, ext-fileinfo, ext-intl,
 ext-libxml, ext-mbstring, ext-pdo, ext-readline, ext-simplexml) plus
 pdo_sqlite/sqlite3/curl, Composer (copied from its own official image),
-Node 22, and the same kind of CLI tools as `redlich`'s devcontainer
+Node 22, and the same kind of CLI tools as the session-start hook
 (`rg`/`fd`/`jq`/`tree`/`shellcheck`/`httpie`/`ast-grep` — all from
 Debian's default archive or npm, nothing needing a blocked network
 path). `script/lib/api-php` routes every `script/*` PHP/composer call
@@ -498,15 +493,14 @@ moved into `script/check-composer` and `script/check-frontend-types`.
 **Why:** the human asked for qa output to be compact, LLM-legible JSON
 rather than prose, and for future conventions (git-staging discipline,
 hexagonal boundaries) to be enforced *in* qa instead of only asserted
-in CLAUDE.md. Adapted from `redlich`'s `AGENT-FIRST-CONTRACT.md` +
-`script/qa`, deliberately smaller: no `--project` multi-repo dispatch
+in CLAUDE.md. Deliberately small: no `--project` multi-repo dispatch
 (paarfragen is one project) and no `--human` streaming mode (JSON is
 the only output shape needed right now, not two).
 
 ## 2026-09-05 — Mago: hexagonal guard enforced in code, not just CLAUDE.md
 
-Added `mago.toml` (adapted from `emsig`'s, namespace `Paarfragen\`,
-paths `api/src`/`api/tests`) — formatter, linter, analyzer, and a
+Added `mago.toml` (namespace `Paarfragen\`, paths `api/src`/`api/tests`)
+— formatter, linter, analyzer, and a
 `[guard]` that mechanically enforces the layering CLAUDE.md used to
 only assert: Domain permits nothing but `@native`; Application adds
 Domain; Infrastructure adds Domain + Application + `Tempest\**`; plus
@@ -517,8 +511,8 @@ readonly, Domain has no base class outside its own `…\Exception\`).
 setting, so even a Note-level finding fails) into one
 `{status, violations, total, summary}` report; `script/check` picks
 it up automatically. `script/format`/`lint`/`analyze`/`guard` are the
-write-capable/ad-hoc counterparts, mirroring emsig's own script names.
-`bin/mago` is a pinned binary (`script/lib/mago-install`, gitignored),
+write-capable/ad-hoc counterparts. `bin/mago` is a pinned binary
+(`script/lib/mago-install`, gitignored),
 fetched by `script/setup` and `session-start.sh`, not a composer
 package. CLAUDE.md's architecture bullet now says a violation fails
 `script/qa`, not just "please keep this framework-free."
@@ -532,11 +526,10 @@ could violate it. Verified against real (throwaway) violations before
 committing: a Domain class importing `Tempest\Router\Get`, a
 non-final Infrastructure class, and a non-readonly Application class
 were all caught and reported with the right file/line before being
-deleted again. Dropped emsig's `*Request`/`*View`/`Bindable`
-structural rules and its `literal-named-argument` severity
-downgrade — the first three assume Infrastructure conventions
-paarfragen hasn't chosen yet (would be guessing), and lowering a
-rule's severity contradicts "as strict as possible."
+deleted again. Left out `*Request`/`*View`/`Bindable` structural
+rules and any severity downgrades — the former assume Infrastructure
+conventions paarfragen hasn't chosen yet (would be guessing), and
+lowering a rule's severity contradicts "as strict as possible."
 
 ## 2026-09-05 — git pre-commit hook runs script/check
 
@@ -546,8 +539,7 @@ copies it into `.git/hooks/pre-commit` (worktree-aware via
 Bypassable with `git commit --no-verify`, same as any git hook.
 
 **Why:** `script/check` already existed as a fast, read-only gate but
-nothing ran it automatically before a commit. Ported from emsig's
-`script/hooks/pre-commit`/`install` near-verbatim — generic bash, no
+nothing ran it automatically before a commit — generic bash, no
 adaptation needed beyond the commit message. Verified end-to-end: a
 script missing its header, staged and committed, was blocked with the
 exact check-script-integrity violation before the hook was removed
@@ -628,3 +620,28 @@ Added explicitly — `@vue/tsconfig`'s `tsconfig.lib.json` variant ships
 this (`array[i]` types as possibly-`undefined`), but the
 `tsconfig.dom.json` this project extends doesn't. Cheap, real
 strictness win, no code exists yet to be affected either way.
+
+## 2026-09-05 — Made the repo self-contained: no more references to sibling repos
+
+This session's access to the `redlich`/`emsig` sibling repos ends going
+forward, so every reference to them was removed or restated:
+
+- `specs/exploration-mode.md` is new — a full, standalone restatement of
+  the product vision that used to live only as a link to `redlich`'s
+  `VISION/paarfrage-exploration-mode.md` (product pitch, core loop,
+  rating scale, full data model, sync/offline behavior, frontend
+  storage and screen layout, explicit out-of-scope list — none of that
+  detail existed anywhere in this repo before now, only a two-line
+  sketch in `specs/STATUS.md`). `specs/api.md` and `specs/STATUS.md` now
+  point at this local file instead of the external one.
+- Every `SETUP-LOG.md`/`api/README.md`/`.devcontainer/Dockerfile`
+  comment that credited a decision to "matching emsig" or "same idea as
+  redlich's devcontainer" was reworded to state the reasoning on its
+  own terms — the underlying facts and decisions are unchanged, only
+  the now-unfollowable cross-repo pointer is gone.
+
+**Why call this out as its own entry:** the vision-doc restatement in
+particular was a real information-loss risk, not just a style cleanup —
+`redlich`'s vision doc had significant product detail this repo had
+never actually captured, only linked to. Read it in full and restated
+it before removing the link, rather than after.

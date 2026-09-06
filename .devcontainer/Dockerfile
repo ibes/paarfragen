@@ -43,16 +43,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # getcomposer.org's installer through bash.
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Node, for frontend/ work from the same shell (matches redlich's
-# devcontainer carrying its whole toolchain in one image).
+# Node, for frontend/ work from the same shell — one image carries the
+# whole repo's toolchain rather than juggling two dev containers.
 ARG NODE_MAJOR=22
 RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR}.x | bash - \
     && apt-get install -y nodejs \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Search/nav tools that beat plain grep/find (same idea as redlich's
-# .devcontainer/Dockerfile) — all from Debian's default archive, no
-# third-party PPA, so this stays reliable regardless of network policy.
+# Search/nav tools that beat plain grep/find — all from Debian's default
+# archive, no third-party PPA, so this stays reliable regardless of
+# network policy.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ripgrep \
         fd-find \

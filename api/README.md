@@ -1,10 +1,9 @@
 # paarfragen — API
 
-Hexagonal PHP core on [Tempest](https://tempestphp.com) — same framework as
-the `emsig` sibling repo. Used here as a **pure JSON API**: no
-server-rendered views, no `vite-plugin-tempest` asset bundling — the
-frontend is a separate Vue/Vite project (`../frontend`) that talks to this
-over HTTP only.
+Hexagonal PHP core on [Tempest](https://tempestphp.com). Used here as a
+**pure JSON API**: no server-rendered views, no `vite-plugin-tempest`
+asset bundling — the frontend is a separate Vue/Vite project
+(`../frontend`) that talks to this over HTTP only.
 
 ```
 public/
