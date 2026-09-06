@@ -100,10 +100,15 @@ retry after network failure trivially safe.
 |---|---|---|
 | id | uuid | generated client-side |
 | deck_id | uuid | |
-| free_text | string | |
+| free_text | string | required, non-empty |
+| handled_at | timestamp, nullable | set once triaged; `NULL` = still open |
 | created_at | timestamp | |
 
-Feedback about the app itself, not tied to a question.
+Feedback about the app itself, not tied to a question. **Triaged via
+MCP, not deleted** (`specs/2026-09-06-slice-4-app-feedback.md`): a
+Tempest `tempest/mcp` server exposes `listAppFeedback`/
+`markFeedbackHandled` tools so it can be read and marked handled
+directly from a Claude session, once a deployment exists to reach.
 
 ## Identity: `deck_id`
 
@@ -113,9 +118,14 @@ several, for different relationships). Anyone holding it has full
 read/write access to that deck's history — a bearer credential,
 acceptable since no personal data is stored.
 
-For exploration mode: `deck_id` is hardcoded into the app's local
-config, not generated or entered by a user. A human-readable recovery/
-sharing code is a good later addition, not needed now.
+**Correction from Slice 3's grill** (`specs/2026-09-06-slice-3-frontend-api-wiring.md`):
+a single value hardcoded into the app's own config, shared by every
+install, would mean every couple using the app writes into the same
+deck — not what "a shared session" between two people means. Instead:
+`deck_id` is generated client-side on first run and persisted to
+`localStorage`; not entered by a user, not shared across installs. A
+human-readable recovery/sharing code is a good later addition, not
+needed now.
 
 ## API
 
@@ -134,13 +144,19 @@ Offline-first. No realtime sync.
   must work with no network at all.
 - Rating/app-feedback submissions write to local state immediately (UI
   never waits on network), then queue for background sending with
-  retry.
+  retry. Ratings use a threshold/online/app-start-triggered queue
+  (Slice 3); app-feedback instead tries to send immediately and only
+  falls back to a queue (flushed on `online`/app-start, no threshold)
+  on network failure — deliberately different, since app-feedback is
+  rare enough that a count threshold would rarely fire
+  (`specs/2026-09-06-slice-4-app-feedback.md`).
 - `POST /generate-question` cannot be queued — it needs a live round
   trip. A multi-second wait is accepted.
 
 ## Frontend: local storage
 
-- `deck_id` — hardcoded.
+- `deck_id` — generated on first run, then persisted (see "Identity"
+  above; corrected from "hardcoded" during Slice 3's grill).
 - `questions` — local cache of `{id, text}`.
 - `rated_question_ids` — set of already-rated question ids, updated
   instantly on submission (before server confirmation).
@@ -159,7 +175,9 @@ One screen, everything visible at once, no staged reveals:
 - Small, visually secondary "new topic" input →
   `POST /generate-question` (exception path, kept unobtrusive).
 - Small, always-reachable entry point for app-level feedback, separate
-  from the question flow.
+  from the question flow — a fixed button, visible in every app state
+  (including the end-state message), opening a modal with just a
+  free-text field (`specs/2026-09-06-slice-4-app-feedback.md`).
 
 Left open, to be decided from real use: whether a rating submits
 instantly or needs a confirm step, and what "Next" does once every

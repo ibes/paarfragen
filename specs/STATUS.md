@@ -60,9 +60,86 @@ trusted.
 
 ## Phase
 
-**Greenfield setup.** Repo skeleton exists (`api/` hexagonal PHP on
-Tempest, `frontend/` Vue/Vite PWA), no product code yet, no spec
-written.
+**Slices 2 through 6 all built.** `api/src/` has its first real
+Domain/Application/Infrastructure code: `GET /questions` and
+`POST /question-feedback`, backed by SQLite, per
+[`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
+`frontend/src/` now has its first real code too: the core
+question/rating loop wired against that API, per
+[`specs/2026-09-06-slice-3-frontend-api-wiring.md`](2026-09-06-slice-3-frontend-api-wiring.md)
+— a client-generated `deck_id`, a `localStorage`-persisted offline
+queue for ratings, a plain Vue composable, no Pinia. `script/qa` is
+green end-to-end (9 PHPUnit + 16 Vitest tests, `vue-tsc`, the frontend
+build), and the whole loop was verified live in a real browser against
+both real dev servers (`script/dev-api` + `npm run dev`) — including a
+rating actually landing in the SQLite database after a queue flush.
+That live pass caught a real gap unit tests couldn't: `api/` had no
+CORS headers, so every cross-origin `fetch()` from `frontend/` was
+silently blocked by the browser. Fixed with
+`api/src/Infrastructure/Http/CorsMiddleware.php` — see `FRICTION.md`
+and `api/reference/tempest.md` for the middleware-priority gotcha that
+came with it (a CORS preflight has to be intercepted *before*
+Tempest's own route-matching middleware, not after).
+
+**Slice 4 (App-Feedback: submit, queue, MCP-driven triage) is now
+built and verified**, per
+[`specs/2026-09-06-slice-4-app-feedback.md`](2026-09-06-slice-4-app-feedback.md):
+`POST /app-feedback` (25 PHPUnit tests total now, up from 9), a small
+fixed feedback button/modal in `frontend/` (25 Vitest tests total, up
+from 16), and a `tempest/mcp` server (`AppFeedbackServer`) exposing
+`list_app_feedback`/`mark_feedback_handled` tools, protected by
+`McpAuthMiddleware` (bearer token + signed timestamp). `script/qa`
+green end-to-end; live-verified against real dev servers and the real
+SQLite DB — a submitted row landing in the database, a real MCP
+`tools/call` request over HTTP listing and then marking that row
+handled, a browser-driven Playwright run of the feedback button/modal
+(including the offline-queue-then-flush-on-reconnect path), and the
+`/mcp` route's 401 rejection of a request with no auth headers. Two
+implementation-time corrections to the locked spec surfaced along the
+way — both in `FRICTION.md` and `api/reference/tempest.md`: the MCP
+route can't be protected via a `#[WithMiddleware]` route decorator
+(Tempest's own MCP routing ignores it; `McpAuthMiddleware` is global
+instead, scoping itself to `/mcp`), and a model property needs no `=
+null` default to be excluded from an `INSERT` (a defaulted nullable
+property still sends an explicit `NULL`, which broke `created_at`'s
+`NOT NULL` constraint).
+
+**Slice 5 (Real PWA app-shell offline) is now built and verified**,
+per [`specs/2026-09-06-slice-5-pwa-offline.md`](2026-09-06-slice-5-pwa-offline.md):
+real placeholder icons (192×192/512×512 + a 180×180
+`apple-touch-icon`), iOS home-screen meta tags, and an active
+`visibilitychange`-triggered service-worker update check on every app
+open (not just the browser's own throttled default) — driven by an
+imminent real deployment where staying current matters during active
+testing. `script/qa` green; live-verified via Playwright against the
+real production build (`npm run build` + `npm run preview` — the PWA
+service worker only precaches real built assets, not `vite`'s dev
+server): the app shell (heading, feedback button) still renders after
+a real offline reload. One test-only gotcha found along the way, in
+`FRICTION.md`: a service worker's `active`/controlling state doesn't
+mean Workbox's precache has actually finished populating Cache
+Storage — wait on the cache contents directly, not registration state.
+
+**Slice 6 (`GET /question-feedback`, API only) is now built and
+verified**, per
+[`specs/2026-09-06-slice-6-question-feedback-reconstruction.md`](2026-09-06-slice-6-question-feedback-reconstruction.md):
+reconstructs "already rated" state — a bare, deduplicated array of
+`question_id`s a deck has rated at least once, not a rating-history
+endpoint. Grilling this caught `specs/api.md`'s original sketch
+contradicting itself (it referenced `created_at` for "take the latest
+rating" while never including `created_at` in the response) — resolved
+by dropping `rating`/`created_at` entirely once it turned out the
+frontend only ever needed a presence check. `question_feedback` itself
+stays fully append-only in storage (Slice 2's decision, unchanged);
+this endpoint dedupes in PHP, not SQL `DISTINCT` (Tempest's
+model-based query builder has no `distinct()`). `script/qa` green (30
+PHPUnit + 25 Vitest tests); live-verified against the real dev server
+and SQLite DB — an empty deck returns `[]`, a re-rated question appears
+exactly once in the response while both rating events persist
+underneath, and a malformed `deck_id` returns `400`. **Frontend
+wiring is explicitly out of scope** — `useQuestionDeck.ts` still
+reconstructs `rated_question_ids` from `localStorage` only, not this
+endpoint; that's a later slice, same split as Slice 2 → Slice 3.
 
 A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
@@ -73,18 +150,34 @@ the human directly.
 
 ## Next step
 
-No locked slice spec yet, and no `spec` skill exists in this repo (no
-`agent/`/vault pipeline like the sibling repos this was scaffolded
-from once had) — write one directly as a `specs/*.md` file, following
-`specs/api.md`'s shape. Before writing any Domain/Application/
-Infrastructure *implementation*, talk to the human about scope first —
-don't assume the vision doc above is ready to build as-is.
+No locked next slice. A real deployment is imminent (the human's own
+words, 2026-09-06) — no ops facts (host, domain) assumed here per
+`CLAUDE.md`; expect this to reopen `POST /app-feedback`'s deferred rate
+limiting and `/mcp`'s deferred IP/domain restriction once a real
+target exists (`specs/2026-09-06-slice-4-app-feedback.md`).
 
-[`specs/api.md`](api.md) already drafts the request/response contract
-for the first slice's five endpoints, so `api/` and `frontend/` can be
-built against a shared interface once that spec exists, without one
-side waiting on the other. It's a draft, not locked — keep updating it
-as either side hits a gap.
+After Slice 6, still not decided between:
+
+- **Frontend wiring for `GET /question-feedback`** —
+  `useQuestionDeck.ts` reconciling `rated_question_ids` with the
+  server on load (reinstall/second-device recovery), deferred in
+  `specs/2026-09-06-slice-6-question-feedback-reconstruction.md`.
+- **Extend `api/`'s scope further** — `POST /generate-question` (needs
+  an LLM-provider decision first).
+- **What replaces the end-state message** once every cached question
+  is rated — reshuffle or AI-generated questions, the human's own
+  framing during Slice 3's grill, explicitly not solved yet.
+- **Rate limiting / abuse protection on `POST /app-feedback`, and
+  IP/domain-level restriction on `/mcp`** — both explicitly deferred
+  in `specs/2026-09-06-slice-4-app-feedback.md` (the latter until a
+  real deployment target exists).
+- **Real use** — the app is usable now; actually using it with a real
+  couple is itself a way to learn what's missing, per
+  `specs/exploration-mode.md`'s own framing of exploration mode as a
+  research instrument.
+
+Ask the human before picking one and grilling a new slice spec — same
+reasoning as before Slice 3/4, `VALUES.md` § Product over system.
 
 ## Decided
 
@@ -102,21 +195,106 @@ as either side hits a gap.
 - **Repo content is English** (docs, code, comments, commits) —
   `CLAUDE.md`. The product's own end-user UI language is a separate,
   still-open decision — see below.
+- **Slice 2 scope: `GET /questions` + `POST /question-feedback` only** —
+  real `api/` implementation, everything else in `specs/api.md`
+  (`GET /question-feedback`, `POST /generate-question`,
+  `POST /app-feedback`) deferred to a later slice. Grilled and locked
+  in `specs/2026-09-06-slice-2-questions-feedback-persistence.md`.
+- **Auth model confirmed:** `deck_id` bearer, format-validated as a
+  UUID (400 if malformed), never looked up against a table — there is
+  no `decks` table. `GET /questions` is global data and needs no
+  `deck_id` at all. `specs/api.md`.
+- **Data storage: SQLite file**, no separate DB service in
+  `docker-compose.yml`. Seed questions ship embedded in a DB migration
+  (`source: {"type":"seed"}`), not a separate seed script.
+- **Server-generated IDs (`questions.id`) are UUIDv7.** Client-generated
+  IDs (`question_feedback.id`, `app_feedback.id`) stay the frontend's
+  own choice. `specs/api.md`.
+- **Deploy target's PHP version: `^8.5`, confirmed** — matches
+  `api/composer.json`'s existing requirement; no longer open.
+- **Slice 3 scope: the core question/rating loop only** — no
+  "new topic" input, no app-feedback entry point (their endpoints
+  don't exist yet). `deck_id` is generated client-side on first run
+  and persisted to `localStorage`, not hardcoded — corrects
+  `specs/exploration-mode.md`'s original design (a single hardcoded
+  value would mean every install shares one deck). Rating submissions
+  queue locally and flush on a threshold/online-event/app-start, never
+  POST instantly. Plain Vue composable for state, native `fetch()`, no
+  Pinia/HTTP library. Real PWA app-shell offline (icons,
+  service-worker precaching) deferred. Grilled and locked in
+  `specs/2026-09-06-slice-3-frontend-api-wiring.md`.
+- **`api/` sends `Access-Control-Allow-Origin: *`** (not an
+  allow-list) — `deck_id` travels only in request bodies/query params,
+  never a cookie, so there's no ambient credential for another origin
+  to piggyback on. Needed once `frontend/` (a different origin in dev
+  and, per the decoupled-directories decision above, likely in
+  production too) started making real cross-origin requests — found
+  missing by Slice 3's live browser smoke test, not by any automated
+  test. `api/src/Infrastructure/Http/CorsMiddleware.php`.
+- **Slice 4 scope: `POST /app-feedback` (write) + its frontend entry
+  point + an MCP-based triage side, one slice** — `free_text` required
+  (unlike `question_feedback`'s nullable one), `201` on success,
+  app-feedback's own immediate-then-fallback-queue offline behavior
+  (not `question_feedback`'s threshold queue), `handled_at` marks a
+  row triaged rather than deleting it. The triage/read side uses
+  Tempest's built-in `tempest/mcp` component (experimental, but no
+  separate infrastructure — one more route on the same `api/`
+  deployment) instead of a `GET` endpoint, protected by a
+  bearer-token + signed-timestamp middleware. That middleware is
+  **global** (like `CorsMiddleware`), not a `#[WithMiddleware]` route
+  decorator as originally planned — Tempest's own MCP route
+  registration ignores decorators on the `#[McpServer]` class, found
+  during implementation, not in the docs; the middleware scopes itself
+  to `/mcp` internally instead. No IP/domain restriction — not
+  reliably implementable (no stable published IP range for MCP client
+  traffic). Grilled and locked in
+  `specs/2026-09-06-slice-4-app-feedback.md`.
+- **Slice 5 scope: real app-shell offline, placeholder icons, active
+  update checks** — 192×192/512×512 + `apple-touch-icon` (180×180)
+  generated placeholders (a heart emoji, not final branding), no
+  maskable variant, `registerType: "autoUpdate"` stays (silent, no
+  reload prompt) but a `visibilitychange`-triggered
+  `registration.update()` forces a check on every app open, not just
+  the browser's own throttled default — an imminent real deployment
+  makes staying current during active testing matter now. Grilled and
+  locked in `specs/2026-09-06-slice-5-pwa-offline.md`.
+- **Slice 6 scope: `GET /question-feedback`, API only** — reconstructs
+  "already rated" state as a bare, deduplicated array of `question_id`s
+  (`["uuid1", "uuid2"]`), not rating history — no `rating`, no
+  `created_at`, no row `id`. Corrects `specs/api.md`'s original sketch,
+  which was self-contradictory (referenced `created_at` for "take the
+  latest" without including `created_at` in the response). Dedup
+  happens in PHP, not SQL `DISTINCT` (Tempest's model-based query
+  builder has no `distinct()`); `question_feedback` itself stays fully
+  append-only in storage, unchanged from Slice 2. Frontend wiring
+  explicitly deferred — same split as Slice 2 → Slice 3. Grilled and
+  locked in
+  `specs/2026-09-06-slice-6-question-feedback-reconstruction.md`.
 
 ## Open decisions (not yet made — ask before assuming)
 
 - **Where `generate:typescript-types` (Tempest → TS type generation,
   `specs/api.md`) writes its output** — deferred until real
   Infrastructure DTOs exist to generate from.
-- **Auth model** for two people sharing a question deck. `specs/exploration-mode.md`
-  proposes a hardcoded, opaque `deck_id` bearer token (no login) for
-  its exploration stage — not yet confirmed for this repo.
-- **Data storage** — nothing wired yet. `specs/exploration-mode.md`
-  sketches `questions` / `question_feedback` / `app_feedback` tables;
-  needs a spec before becoming schema.
-- **Deploy target's actual PHP version** — assumed ^8.5 (PHP 8.5 is
-  confirmed to run this exact stack, Tempest `^3.0`, successfully in a
-  real deployment elsewhere), not confirmed for this repo's own target.
+- **`POST /generate-question`** — needs an LLM-provider decision first;
+  exact 4xx codes, success status, and idempotency shape still need
+  deciding when a slice actually builds it. (`GET /question-feedback`
+  is now decided — Slice 6; `POST /app-feedback` — Slice 4.)
+- **Rate limiting / abuse protection on `POST /app-feedback`** — an
+  anonymous `deck_id` can submit freely; noted but not solved in
+  `specs/2026-09-06-slice-4-app-feedback.md`.
+- **IP/domain-level restriction on the `/mcp` triage route** — deferred
+  until a real deployment target exists (no stable IP range to
+  restrict to before then). `specs/2026-09-06-slice-4-app-feedback.md`.
+- **Real branding icon + maskable icon variant** — the current
+  `frontend/public/icon-*.png` are a generated placeholder, deferred
+  in `specs/2026-09-06-slice-5-pwa-offline.md`. Also whether the
+  "check for updates on every app open" emphasis should relax once the
+  active test/deployment phase settles.
+- **Deployment target** — hosting, domain, HTTPS: genuinely not known
+  yet as of this writing; the human said a deployment is imminent
+  (2026-09-06) but named no specifics — nothing to record here until
+  it happens, per `CLAUDE.md`'s "no invented ops facts."
 - **End-user UI language** — repo content is English by house rule,
   but the product's name and its original design input are German; a
   German-language UI is plausible but not decided. Current placeholder
@@ -173,8 +351,9 @@ repeated here on purpose.
   earlier dev sandbox's proxy during a `composer update` run (before
   the Docker approach existed) — composer fell back to cloning from
   git source successfully; may not recur elsewhere.
-- `frontend/vite.config.ts` ships `vite-plugin-pwa` with an empty
-  `icons: []` — no real app icons exist yet (see the TODO next to it).
-  Add 192×192 and 512×512 PNGs before treating the PWA as installable.
+- `frontend/public/icon-*.png`/`apple-touch-icon.png` are a generated
+  placeholder (a heart emoji on a solid background,
+  `specs/2026-09-06-slice-5-pwa-offline.md`), not final branding —
+  swap them for real design assets whenever that work happens.
 - `api/tests/*` and `api/src/*` subdirectories are empty (`.gitkeep`
   only) — first real code should come from a spec, not ad-hoc.

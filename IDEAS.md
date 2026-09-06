@@ -49,10 +49,42 @@ structure) — assert on behavior, copy, redirects, or DB rows instead.
 **Why it might matter:** cheap to state, expensive to unwind once a
 test suite full of brittle cosmetic assertions exists.
 **Rough shape:** A paragraph in `api/README.md` or a new
-`api/tests/README.md`, once `api/tests/` actually needs guidance.
-**Not now because:** `api/tests/*` are empty `.gitkeep` placeholders —
-nothing to protect yet, and writing the rule before any test exists
-risks getting the specifics wrong.
+`api/tests/README.md`.
+**Trigger has fired, not yet written:** `api/tests/*` now has real
+tests (Slice 2's 9 PHPUnit tests), and Slice 3's spec
+(`specs/2026-09-06-slice-3-frontend-api-wiring.md`) already leans on
+this same unwritten rule for its own frontend testing section. Worth
+writing from both slices' actual experience rather than staying
+speculative.
+
+**External input, evaluated 2026-09-06, not adopted wholesale:**
+Matt Pocock's `tdd` skill
+(https://github.com/mattpocock/skills/blob/main/skills/engineering/tdd/SKILL.md)
+covers close to the same ground — good tests exercise behavior through
+public interfaces ("seams"), never mock internals or assert through a
+side channel. Two things from it are worth folding into this repo's
+own doc when it's written:
+- **The "tautological test" anti-pattern** (an assertion that
+  recomputes the expected value the same way the code does, so it
+  can't ever disagree with the code) — sharper and more specific than
+  anything currently in this entry.
+- **"Seam"** as the name for the public boundary a test exercises —
+  precise, worth borrowing as vocabulary.
+
+Not adopted as an installed skill: its "red before green, always" rule
+would contradict the Domain/Application-test-first-but-Infrastructure-
+test-last split above, which exists specifically because that split
+doesn't hold for a hexagonal app with a framework boundary (a
+Tempest-routed test can't meaningfully fail-then-pass before the
+routing/DB plumbing exists). It also references sibling skills this
+repo doesn't have (`codebase-design` for its seam/module vocabulary,
+a `code-review` skill it expects to own the refactor stage) — grabbing
+just the `tdd` piece leaves those references dangling. And nothing in
+this repo's own test-writing so far (Slice 2's tests hit real
+HTTP/DB seams, no mocked internals) shows the specific failure mode
+the skill defends against — adopting a new workflow to prevent a
+problem not yet observed here would be exactly the kind of
+complexity `VALUES.md` says has to earn its place.
 
 ## `dependency-cruiser` for frontend architectural boundaries
 
@@ -65,10 +97,13 @@ has.
 **Rough shape:** JSON output, straightforward to fold into the
 existing `{status, violations, total, summary}` contract as
 `script/check-frontend-boundary`.
-**Not now because:** `frontend/src/` is currently just
-`App.vue`/`main.ts`/`style.css` — no layers exist to draw a boundary
-between yet. Defining rules now would be guessing at a structure that
-doesn't exist.
+**Not now because:** `frontend/src/` now has real structure since
+Slice 3 (`api/`, `composables/`, `deck/`), but it's still three small,
+already-obviously-separated modules with no accidental cross-imports
+observed yet — enforcing a boundary now would still be guessing ahead
+of an actual violation. Revisit once `frontend/src/` is big enough
+that "just don't do that" stops being a reliable convention on its
+own.
 
 ## A named spec template shape
 

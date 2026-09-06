@@ -890,3 +890,126 @@ what `VALUES.md` is for (guidance for situations `CLAUDE.md`'s rules
 don't cover). Deliberately did not build a tripwire script/counter for
 this — would be system work justified by a value about not doing too
 much system work.
+
+## 2026-09-06 — Slice 2: `script/tempest` added
+
+New script, `script/lib/api-php vendor/bin/tempest "$@"` — mirrors
+`script/check-composer`'s pattern to route Tempest console commands
+(`migrate:up`, `key:generate`, …) through the `api/` container.
+
+**Why:** `CLAUDE.md`'s scripts-first rule; `api/.env.example` already
+referenced this exact script name as "once that script exists," so
+first real `api/` code was the trigger to build it.
+
+## 2026-09-06 — Slice 2: DB config left at Tempest's default, dedicated testing DB added
+
+No `database.config.php` written — Tempest's zero-config default
+(`.tempest/database.sqlite` under `api/`) already matches the locked
+spec (SQLite file, no separate service), so an explicit config file
+would only restate the default. Added `api/tests/database.testing.config.php`
+(Tempest's own documented per-environment pattern) so tests never touch
+the dev DB, and added the `ENVIRONMENT=testing` `<php>` block to
+`phpunit.xml` — missing before, and required for that per-environment
+config file to actually be picked up. Both `api/.tempest/` and
+`api/tests/testing.sqlite` gitignored.
+
+**Why:** one less file to maintain when the default already says what
+we want (`VALUES.md` — simple over impressively complex); the testing
+DB split is the officially documented way to keep `script/test-api`
+from writing into the dev database.
+
+## 2026-09-06 — Slice 2: `#[Stateless]` required on both HTTP controllers
+
+`QuestionController` and `QuestionFeedbackController` both carry
+`#[Tempest\Router\Stateless]`.
+
+**Why:** found via a live smoke test against a real `php -S` server
+(PHPUnit's `IntegrationTest` doesn't exercise real `Sec-Fetch-*`
+headers or inspect `Set-Cookie`, so it never caught this). Without it,
+Tempest sets a session cookie on every response and its
+`PreventCrossSiteRequestsMiddleware` 403s any request lacking a
+same-origin `Sec-Fetch-Site` header — both wrong for the locked
+"no login, no session" `deck_id`-bearer auth model
+(`specs/exploration-mode.md`), and the CSRF check specifically breaks
+a legitimate cross-origin call from `frontend/`'s own origin, which
+the decoupled-`api`/`frontend` architecture explicitly allows for.
+
+## 2026-09-06 — Slice 2: no `IsDatabaseModel`, no custom active-record trait either
+
+`DatabaseQuestionRepository`/`DatabaseQuestionFeedbackRepository` call
+`query(Model::class)->select()/insert()` directly rather than using
+Tempest's `IsDatabaseModel` trait or a hand-rolled equivalent.
+
+**Why:** `IsDatabaseModel` is incompatible with `#[Uuid]` primary keys
+(Tempest's own docs) — a real constraint, not a style choice — and
+UUIDv7 primary keys were already locked in the slice spec. A small
+custom trait could reproduce the `Model::create()` convenience without
+that restriction, and was considered, but rejected: two models with a
+handful of call sites each don't justify the abstraction
+(`VALUES.md`).
+
+## 2026-09-06 — Added the `retro` skill
+
+New skill, `.claude/skills/retro/SKILL.md` — a wrap-up pass right after
+a feature/slice/fix goes green, reconstructing the whole build for
+friction that happened but wasn't logged in the moment, and deciding
+whether a reusable gotcha belongs in a reference doc (`api/reference/
+*.md`, …), not just `FRICTION.md`.
+
+**Why:** built after a retro on Slice 2 itself surfaced exactly this
+gap — three real gotchas (a `#[Stateless]` requirement, a mago
+`mixed-assignment` idiom, a content-negotiation debug-page surprise)
+happened during the build but were never logged until asked, and none
+of them had made it into `api/reference/tempest.md` even though that
+file exists precisely for "framework gotchas not obvious from a quick
+skim." `friction` already covers logging one thing as it happens;
+nothing covered the retrospective sweep once real work lands, or the
+"does this belong in a reference doc too" question. Deliberately
+scoped narrower than `IDEAS.md`'s "Extended kaizen" entry (a periodic,
+whole-agent-setup audit) — this is per-build, not on a time cadence.
+
+## 2026-09-06 — Added `script/lib/playwright-launch.mjs`
+
+A small importable helper (`launchChromium()`), not a `script/help`
+command — resolves and launches this sandbox's Chromium build for any
+throwaway, scratchpad Playwright smoke script.
+
+**Why:** the same two environment quirks (Node's ESM resolver ignoring
+`NODE_PATH`, so `playwright` needs an absolute-path import; the
+Chromium binary living under a version-suffixed directory,
+`chromium-1194` at time of writing, not a stable path) got hand-solved
+twice already across two separate ad-hoc scripts this session, each
+verbatim-copied from `FRICTION.md`'s own "remember this next time"
+entry. A committed helper removes the need to remember at all — a
+future scratchpad script just imports it. Resolves the chromium
+version directory dynamically (`readdirSync` + regex) rather than
+hardcoding `chromium-1194`, so a future Playwright browser bump
+doesn't silently go stale. Lives in `script/lib/` (not top-level
+`script/`) since it's a library import, not a directly-run command —
+confirmed `script/check-script-integrity`/`check-shell` only scan
+`script/*` non-recursively, so it's correctly exempt from the
+Description/Side-effects header those enforce.
+
+## 2026-09-06 — Added `frontend/reference/vue.md`
+
+New file, mirroring `api/reference/tempest.md`'s role for `api/`: a
+"Framework/tooling gotchas" doc, cross-referenced from
+`frontend/README.md`'s new "House rules" section (matching
+`api/README.md`'s own pointer to `api/reference/`).
+
+**Why:** an `IDEAS.md` entry had tracked this since Slice 3, deferred
+until "a third or fourth frontend-specific gotcha lands" — Slice 5's
+retro found the fourth (a service-worker `active`/`controller`-state
+vs. Workbox-precache-timing gotcha), crossing that stated threshold.
+Consolidated five gotchas total into the new doc: the two already
+inline in `frontend/eslint.config.js`'s comments (`no-undef` off,
+type-checked ESLint's `.vue` interop problem), the three already in
+`script/lib/playwright-launch.mjs`'s header comment (absolute import
+path, versioned Chromium binary, `waitUntil: "networkidle"` hanging
+against Vite's dev server), plus the new Workbox one, which had no
+natural code-comment home of its own. Existing inline comments were
+left in place (same "both, not either" pattern `api/reference/
+tempest.md`'s mixed-assignment entry already uses) — the reference doc
+is for finding a gotcha *before* writing the code that would trip it,
+not a replacement for the reasoning at its point of use. Deleted the
+now-fulfilled `IDEAS.md` entry rather than leaving it to go stale.

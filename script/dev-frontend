@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Description: Run frontend/'s Vite dev server, for manual smoke-testing against a real browser. Foreground — Ctrl+C to stop.
+# Side-effects: WRITES frontend/node_modules/ if dependencies changed since the last install; binds the host port below.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+(cd frontend && npm install --no-audit --no-fund)
+
+port="${PORT:-5173}"
+echo "frontend/ dev server: http://127.0.0.1:${port} (Ctrl+C to stop)"
+(cd frontend && npm run dev -- --port "$port" --strictPort)
