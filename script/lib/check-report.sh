@@ -9,6 +9,16 @@
 # needed here. A non-conforming check (composer, vue-tsc, or anything that
 # exited 2) falls back to {name, status, exit, raw_output}, raw_output
 # omitted when status is clean, so a clean run stays a one-line entry.
+#
+# WRITING A NEW check-*: any `var=$(cmd)` where cmd is *expected* to
+# sometimes exit non-zero (a grep with no match, a linter reporting
+# findings) needs `|| true` or `|| rc=$?` at the end, even though this
+# file's own `set -Eeuo pipefail` + `trap 'exit 2' ERR` shouldn't fire on
+# a plain assignment per bash's own documented errexit exemption for
+# that form — the ERR trap fires anyway on some bash versions regardless
+# of that exemption. Confirmed the hard way: an early check-frontend-lint
+# reported every real finding as "broken" (exit 2) instead of "red"
+# (exit 1) until this was added.
 
 worst=0
 entries=()

@@ -12,6 +12,10 @@ violations='[]'
 add() { violations=$(jq --argjson v "$1" '. + $v' <<<"$violations"); }
 
 if ! npx prettier --check . >/dev/null 2>&1; then
+    # --list-different, not --check's own text output: --check's trailing
+    # "Code style issues found in..." summary line gets the same "[warn] "
+    # prefix as a real per-file line, so parsing it once mistook the
+    # summary itself for a file. --list-different prints only file paths.
     files=$(npx prettier --list-different . 2>/dev/null || true)
     add "$(jq -R --arg prefix "frontend/" 'select(length > 0) | {file: ($prefix + .), line: 1, message: "not formatted — run script/format-frontend"}' <<<"$files" | jq -s .)"
 fi
