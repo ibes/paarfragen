@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Description: Run api/'s real HTTP server (PHP's built-in server) against the dev SQLite DB, for manual smoke-testing outside PHPUnit. Foreground — Ctrl+C to stop.
+# Side-effects: WRITES api/vendor/ if dependencies changed since the last install; binds the host port below. Run `script/tempest migrate:up` first if the DB schema is out of date.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# shellcheck source=script/lib/ensure-dockerd.sh
+source script/lib/ensure-dockerd.sh
+if ! ensure_dockerd; then
+    echo "Docker isn't available/running here — api/ needs it for PHP 8.5 (Tempest)." >&2
+    echo "See specs/STATUS.md for what this depends on in a Claude Code cloud session." >&2
+    exit 1
+fi
+
+if [[ ! -f api/.env ]]; then
+    echo "api/.env is missing — run 'script/tempest key:generate' first." >&2
+    echo "(It creates api/.env from api/.env.example and writes a SIGNING_KEY into it.)" >&2
+    exit 1
+fi
+
+script/lib/api-php composer install --no-interaction --quiet
+
+port="${PORT:-8000}"
+echo "api/ dev server: http://127.0.0.1:${port} (Ctrl+C to stop)"
+docker compose run --rm --no-deps -w /workspace/api -p "${port}:${port}" api \
+    php -S "0.0.0.0:${port}" -t public public/index.php
