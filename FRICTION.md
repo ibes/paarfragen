@@ -119,3 +119,24 @@ this time (recognized the pattern instead of re-diagnosing from
 scratch), but the mistake itself still happened once more — the "would
 help" above evidently isn't front-of-mind enough by itself; worth
 extra care the next few times this comes up.
+
+## 2026-09-06 — A user message can reference an unlabeled artifact from a *different* session on the same repo
+
+The user answered "Q1" of a `GET /question-feedback` grill with just
+"keep as full history" — no other context, and this session had no
+record of Q1 ever being asked (that grill hadn't started here). Guessed
+twice (a `FRICTION.md`/`IDEAS.md` pruning-policy question, then
+git-history-rewriting) before asking an open "what does this refer
+to?", which surfaced real user frustration
+("Woher kommt die Verwirrung?!") before the actual cause came out: the
+user was mid-grill in a *different* Claude Code session on this same
+repo/branch and assumed this session shared that context. `git log`/
+`git status`, checked directly, immediately confirmed nothing matched
+(clean tree, no in-progress spec file) — that check would have caught
+the mismatch on the first guess instead of the third. Would help: when
+a message references a specific unlabeled artifact ("Q1", "the spec
+we're writing", a decision "we already made") that isn't anywhere in
+this session's own visible history, check `git log`/`git status`/
+`specs/STATUS.md` first, before guessing at what it might mean — "does
+this exist here" beats semantic guessing, and surfaces a cross-session
+mismatch immediately instead of after several wrong guesses.

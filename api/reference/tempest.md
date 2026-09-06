@@ -100,6 +100,12 @@ Hexagon still wins in `Domain/`/`Application/`.
   `select()` populates it via reflection — same trick `PrimaryKey $id`
   already relies on for a server/client-generated id. See
   `api/src/Infrastructure/Persistence/AppFeedbackModel.php`.
+- **The model-based `SelectQueryBuilder` has no `distinct()`** — only
+  `CountQueryBuilder` does (checked the source, not assumed). For a
+  small, deck-scoped result set, dedupe in PHP after `->all()` (an
+  array keyed by the column, then `array_keys()`) rather than reaching
+  for a raw-SQL escape hatch — see
+  `DatabaseQuestionFeedbackRepository::listRatedQuestionIds()`.
 
 ## View / Request / Bindable — the object shapes Tempest expects
 
