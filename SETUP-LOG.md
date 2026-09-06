@@ -807,3 +807,20 @@ ran against this repo); no `.mcp.json` or user-level settings reference
 either sibling; a full grep of this repo's own tracked files turns up
 `redlich`/`emsig` only in `SETUP-LOG.md`'s own historical entries, which
 is what that file is for.
+
+## 2026-09-06 — `grill-me` skill, adapted (not ported) from emsig
+
+Human wanted the `grill-me` skill adopted: a relentless, one-question-
+at-a-time design interview that resolves or explicitly defers open
+questions before a spec locks. Added `.claude/skills/grill-me/
+SKILL.md`, rewritten rather than copied — emsig's version is tied to
+files and concepts this repo doesn't have (`specs/inbox/`, `specs/
+reference/glossary.md`/`work-model.md`, a vault sync step, "Emsig-
+specific lenses" about German club volunteer workflows). Kept the
+actual technique (one question per message, recommend + reason, track
+decisions, explicit resolved-vs-deferred handoff) and pointed it at
+this repo's real files instead (`specs/STATUS.md`, `specs/
+exploration-mode.md`, `specs/api.md`). Replaced the domain-specific
+lenses with this repo's own already-decided constraints (no accounts/
+`deck_id` identity, `api/`+`frontend/` decoupling, hexagonal) rather
+than inventing placeholder ones.
