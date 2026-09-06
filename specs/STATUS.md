@@ -79,21 +79,24 @@ the human directly.
 
 ## Next step
 
-No locked next slice. Two reasonable directions, not yet decided
-between:
+**Decided: wire `frontend/` against the real API next** (Slice 3),
+over extending `api/`'s own scope further — per `VALUES.md` § Product
+over system, and the human's explicit call. Branch:
+`claude/ibes-paarfragen-frontend-api-wiring`.
 
-- **Wire `frontend/` against the real API** — replace the (not yet
-  written) mock/placeholder data flow with real calls to
-  `GET /questions` / `POST /question-feedback`, so the actual product
-  loop (question → rate → next) becomes usable end to end for the
-  first time.
-- **Extend `api/`'s scope** — `GET /question-feedback`,
-  `POST /generate-question` (needs an LLM-provider decision first, see
-  `specs/api.md`'s "Open items"), or `POST /app-feedback`.
+Scope not yet grilled. `frontend/src/` is still the Vite scaffold only
+(`App.vue`/`main.ts`/`style.css`) — no API client, no question/rating
+UI, nothing calling `GET /questions` / `POST /question-feedback` yet.
+Grill scope/state-management/offline-behavior before locking a slice
+spec, same process as
+[`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
+`specs/exploration-mode.md` § "Frontend: screen layout" and
+§ "Sync and offline behavior" are the design input to restate from,
+not a scope-and-Done commitment as-is.
 
-Ask the human before picking one and grilling a new slice spec — don't
-default to more system/API work over the product becoming usable, per
-`VALUES.md` § Product over system.
+`api/`'s remaining scope (`GET /question-feedback`,
+`POST /generate-question`, `POST /app-feedback`) stays deferred — see
+§ Open decisions.
 
 ## Decided
 
