@@ -697,3 +697,19 @@ a file nobody opens. The second value directly reinforces the
 idea isn't resolving the friction) — stating it as a value rather than
 only as a procedural note makes the intent explicit for cases that
 mechanism doesn't cover.
+
+## 2026-09-06 — Friction value: high priority, explicitly not highest
+
+Sharpened same-day: lean's actual claim is that improving how the work
+gets done outranks the work itself, so a recurring `FRICTION.md` entry
+should get high priority — not deferred indefinitely — but not the
+highest either, so it doesn't preempt whatever real task is in progress
+for every papercut.
+
+**Why:** the original wording ("gets solved, not just logged") named
+the failure mode but not where the fix sits relative to everything
+else competing for attention — without a priority band it either reads
+as "drop everything" or, more likely in practice, as no priority at
+all. Naming it explicitly as high-but-not-highest gives a session
+something concrete to weigh a stumbled-over friction fix against the
+task at hand, instead of either extreme.

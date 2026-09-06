@@ -19,7 +19,10 @@ capable.
 ## Friction gets solved, not just logged
 
 Naming a problem (`FRICTION.md`) or writing up a considered fix
-(`IDEAS.md`) is a checkpoint, not the destination. Lean/kaizen: surface
-friction fast and cheaply, but don't let a well-kept log become a
-substitute for actually closing the gap. A recurring entry is a signal to
+(`IDEAS.md`) is a checkpoint, not the destination. Lean/kaizen:
+improving how the work gets done outranks the work itself — don't let a
+well-kept log become a substitute for actually closing the gap. Give
+friction fixes high priority, not the highest: don't drop the actual
+task at hand to chase every papercut, but don't let "later" become the
+default either. A recurring entry is the signal to stop deferring and
 build the fix, not to write a better description of it.
