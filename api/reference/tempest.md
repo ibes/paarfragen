@@ -142,7 +142,20 @@ Two patterns worth knowing before the first attempt:
   needed `mixed-assignment`×1 + `mixed-property-access`×4 +
   `mixed-argument`×3 — different codes entirely, not just a different
   count). Run `bin/mago analyze <file>` directly and use its exact
-  `warning[...]`/`error[...]` codes.
+  `warning[...]`/`error[...]` codes. The same stub-typing gap also
+  shows up as `less-specific-return-statement` when a method's return
+  type is narrower than what mago infers from an untyped `$row` (e.g.
+  `array_keys()` on an array keyed by `$row->question_id` infers
+  `list<array-key>`, wider than a declared `string[]`) — same fix,
+  suppress the return line.
+- **Mago's `too-many-methods` lint caps a class's method count** —
+  hits PHPUnit test classes fastest, since one behavior often needs
+  several small test methods. Don't fight it with a bigger threshold;
+  split the test class by concern instead, the same way this repo
+  already splits `AppFeedbackControllerTest`/`AppFeedbackMcpTest`/
+  `McpAuthMiddlewareTest` and `QuestionFeedbackControllerTest`
+  (writes)/`QuestionFeedbackListTest` (reads) — each stays focused and
+  under the cap without disabling the rule.
 - **`*.config.php` discovery files need an explicit namespace.**
   `mago.toml`'s `[guard.perimeter]` only permits a Tempest dependency
   from a namespace it recognizes (`Paarfragen\Infrastructure\`,
