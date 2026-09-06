@@ -4,26 +4,11 @@ import type { Question, QuestionFeedback } from "../api/types";
 import type { Rating } from "../config";
 import { FLUSH_THRESHOLD } from "../config";
 import { getOrCreateDeckId } from "../deck/deckId";
+import { readJson, writeJson } from "../storage";
 
 const QUESTIONS_KEY = "paarfragen:questions";
 const RATED_IDS_KEY = "paarfragen:rated_question_ids";
 const PENDING_KEY = "paarfragen:pending_feedback";
-
-function readJson<T>(key: string, fallback: T, storage: Storage): T {
-  const raw = storage.getItem(key);
-  if (raw === null) {
-    return fallback;
-  }
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJson(key: string, value: unknown, storage: Storage): void {
-  storage.setItem(key, JSON.stringify(value));
-}
 
 export interface UseQuestionDeckOptions {
   fetchImpl?: typeof fetch;

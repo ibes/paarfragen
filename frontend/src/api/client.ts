@@ -1,5 +1,5 @@
 import { API_BASE_URL } from "../config";
-import type { Question, QuestionFeedback } from "./types";
+import type { AppFeedback, Question, QuestionFeedback } from "./types";
 
 export async function fetchQuestions(
   fetchImpl: typeof fetch = fetch,
@@ -61,5 +61,42 @@ export async function submitQuestionFeedback(
 
   // Anything else (5xx, an unexpected status) is treated like a network
   // failure: keep the row queued and try again on the next flush.
+  return { outcome: "network-error" };
+}
+
+export async function submitAppFeedback(
+  feedback: AppFeedback,
+  fetchImpl: typeof fetch = fetch,
+): Promise<SubmitFeedbackResult> {
+  let response: Response;
+  try {
+    response = await fetchImpl(`${API_BASE_URL}/app-feedback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: feedback.id,
+        deck_id: feedback.deckId,
+        free_text: feedback.freeText,
+      }),
+    });
+  } catch {
+    return { outcome: "network-error" };
+  }
+
+  if (response.status === 201) {
+    return { outcome: "submitted" };
+  }
+
+  if (response.status === 400) {
+    const body = (await response.json().catch(() => null)) as {
+      error?: { message?: string };
+    } | null;
+    return {
+      outcome: "rejected",
+      status: response.status,
+      message: body?.error?.message ?? "Request rejected.",
+    };
+  }
+
   return { outcome: "network-error" };
 }
