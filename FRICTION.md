@@ -28,3 +28,4 @@ is actually fixed: remove the entry, and log the real decision in
 `SETUP-LOG.md` instead. Don't let a truly resolved entry linger here.
 
 ---
+

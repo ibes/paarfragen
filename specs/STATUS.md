@@ -73,10 +73,12 @@ the human directly.
 
 ## Next step
 
-No locked slice spec yet. Before writing any Domain/Application/
-Infrastructure *implementation*, write one using the `spec` skill —
-talk to the human about scope, don't assume the vision doc above is
-ready to build as-is.
+No locked slice spec yet, and no `spec` skill exists in this repo (no
+`agent/`/vault pipeline like the sibling repos this was scaffolded
+from once had) — write one directly as a `specs/*.md` file, following
+`specs/api.md`'s shape. Before writing any Domain/Application/
+Infrastructure *implementation*, talk to the human about scope first —
+don't assume the vision doc above is ready to build as-is.
 
 [`specs/api.md`](api.md) already drafts the request/response contract
 for the first slice's five endpoints, so `api/` and `frontend/` can be

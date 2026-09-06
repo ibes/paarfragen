@@ -849,3 +849,27 @@ here), and every Emsig-app-specific example. Linked from `api/README.md`
 under a new "House rules" section, which also dropped its now-stale
 "not yet build-tested end-to-end" line (superseded by the session that
 got `docker compose build api` fully green).
+
+## 2026-09-06 — Removed the leftover `agent/` folder; committed fully to `.claude/`
+
+Human decided against carrying emsig's agent-tool-neutral split
+(`agent/` for real content, `.claude/` as thin pointers into it) for
+this repo — this repo only targets Claude Code, and every skill built
+here already went straight into `.claude/skills/*` without anyone
+missing the indirection. Removed `agent/skills/INDEX.md` (the only
+file under `agent/`, a leftover from the very first commit, unreferenced
+by anything current) and the now-empty `agent/` tree.
+
+Found while doing this: `agent/skills/INDEX.md` had survived the
+earlier "silent redlich/emsig infrastructure" audit, because that audit
+grepped for the literal strings `redlich`/`emsig` — this file names
+neither, but still told a reader to reach for `spec`/`kaizen`/
+`bug-report` as "global skills," which was already false by the
+housekeeping/setup-log fixes earlier in this session, and would have
+been misleading regardless. It was also stale on its own terms
+("no project-specific skills yet" — four already existed). Widened the
+sweep while here and found one more of the same shape:
+`specs/STATUS.md`'s "Next step" told a reader to write the first spec
+"using the `spec` skill" — a skill that, like `spec`/`kaizen`/
+`bug-report`, only exists in the sibling repos. Reworded it to say so
+directly rather than naming a skill this repo doesn't have.
