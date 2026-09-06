@@ -824,3 +824,28 @@ exploration-mode.md`, `specs/api.md`). Replaced the domain-specific
 lenses with this repo's own already-decided constraints (no accounts/
 `deck_id` identity, `api/`+`frontend/` decoupling, hexagonal) rather
 than inventing placeholder ones.
+
+## 2026-09-06 — `api/reference/php.md` + `tempest.md`, distilled from emsig
+
+Human asked for an opinion on emsig's `agent/reference/*.md` docs
+(PHP/Tempest house rules) before access to that repo ends. Assessment:
+most of it is Emsig's own app conventions (DaisyUI components, German
+i18n catalog, `FlashMessage` enum, a `Guide` feature module) — not
+reusable here — but a real core is framework/language-level knowledge
+that doesn't depend on this repo having any Domain/Infrastructure code
+yet, unlike a naming/DTO convention: the PHP 8.2–8.4 syntax table,
+guard-clause readability rules, and genuine Tempest v3 framework
+gotchas (exact-name POST-to-`*Request` field mapping — confirmed real
+by finding Tempest's own `MapFrom` attribute, which would be pointless
+if mapping already did case conversion; middleware being global by
+default via `HttpMiddlewareDiscovery`, confirmed present in the
+vendored source; browsers hiding `<template>` content while Tempest
+still renders inside it).
+
+Added `api/reference/php.md` and `api/reference/tempest.md` with just
+that distilled core — dropped Homebrew-PHP paths (this repo only runs
+PHP in Docker), the glossary-locked-enum rule (no glossary mechanism
+here), and every Emsig-app-specific example. Linked from `api/README.md`
+under a new "House rules" section, which also dropped its now-stale
+"not yet build-tested end-to-end" line (superseded by the session that
+got `docker compose build api` fully green).

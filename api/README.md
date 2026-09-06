@@ -50,10 +50,16 @@ repo (`../.devcontainer/devcontainer.json` points at this same `api`
 service) — open the repo in a Dev Container and you get PHP 8.5, Node,
 and the CLI tools in `.devcontainer/Dockerfile` in one shell.
 
-Not yet build-tested end-to-end (no working Docker daemon in the sandbox
-this was set up in) — see `../specs/STATUS.md` § Known quirks before
-relying on it.
-
 ## Toolchain
 
 Via `../script/*`, not composer directly — see `../script/help`.
+
+## House rules
+
+[`reference/php.md`](reference/php.md) and
+[`reference/tempest.md`](reference/tempest.md) — PHP/Tempest
+framework-level guidance (modern syntax, framework gotchas, the
+View/Request/Bindable shapes Tempest expects). Framework-level, not
+this repo's own conventions — those don't exist yet (`src/` is still
+empty), see `../IDEAS.md`'s DTO-rules entry for what's deferred until
+real code exists to shape them.
