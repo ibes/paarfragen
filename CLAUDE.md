@@ -6,6 +6,9 @@ cross-platform shell without touching the API.
 
 ## Non-negotiables
 
+- **Values:** [`VALUES.md`](VALUES.md) is the reasoning behind these
+  rules. When a situation isn't covered explicitly below, decide from
+  there instead of guessing.
 - **Scope:** [`specs/STATUS.md`](specs/STATUS.md) is the session router
   (phase, next step, known quirks). Read it first.
 - **Scripts first:** all toolchain ops via `script/*` — never bare

@@ -679,3 +679,21 @@ survive losing access to where they were found": write them down now,
 in this repo's own words, before the access is gone — same principle
 `specs/exploration-mode.md` (previous entry) already applied to the
 product vision.
+
+## 2026-09-06 — `VALUES.md`: two standing values, not another log
+
+Human-requested: a place for foundational values that should guide
+decisions here, distinct from the other files because it's not a log of
+events — it doesn't grow entry-by-entry the way `SETUP-LOG.md`/
+`IDEAS.md`/`FRICTION.md` do. Two values recorded: prefer simple tools
+over impressively complex ones, and treat friction as something to
+solve, not just to name or document (lean/kaizen).
+
+**Why:** `CLAUDE.md` says what to do; nothing said *why*, for the cases
+a rule doesn't already cover. Referenced from `CLAUDE.md`'s
+Non-negotiables so a session actually reads it rather than it becoming
+a file nobody opens. The second value directly reinforces the
+`FRICTION.md`/`IDEAS.md` lifecycle rule added earlier today (writing an
+idea isn't resolving the friction) — stating it as a value rather than
+only as a procedural note makes the intent explicit for cases that
+mechanism doesn't cover.
