@@ -967,3 +967,25 @@ nothing covered the retrospective sweep once real work lands, or the
 "does this belong in a reference doc too" question. Deliberately
 scoped narrower than `IDEAS.md`'s "Extended kaizen" entry (a periodic,
 whole-agent-setup audit) — this is per-build, not on a time cadence.
+
+## 2026-09-06 — Added `script/lib/playwright-launch.mjs`
+
+A small importable helper (`launchChromium()`), not a `script/help`
+command — resolves and launches this sandbox's Chromium build for any
+throwaway, scratchpad Playwright smoke script.
+
+**Why:** the same two environment quirks (Node's ESM resolver ignoring
+`NODE_PATH`, so `playwright` needs an absolute-path import; the
+Chromium binary living under a version-suffixed directory,
+`chromium-1194` at time of writing, not a stable path) got hand-solved
+twice already across two separate ad-hoc scripts this session, each
+verbatim-copied from `FRICTION.md`'s own "remember this next time"
+entry. A committed helper removes the need to remember at all — a
+future scratchpad script just imports it. Resolves the chromium
+version directory dynamically (`readdirSync` + regex) rather than
+hardcoding `chromium-1194`, so a future Playwright browser bump
+doesn't silently go stale. Lives in `script/lib/` (not top-level
+`script/`) since it's a library import, not a directly-run command —
+confirmed `script/check-script-integrity`/`check-shell` only scan
+`script/*` non-recursively, so it's correctly exempt from the
+Description/Side-effects header those enforce.
