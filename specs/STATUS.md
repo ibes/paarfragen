@@ -60,7 +60,7 @@ trusted.
 
 ## Phase
 
-**Slices 2 through 5 all built.** `api/src/` has its first real
+**Slices 2 through 6 all built.** `api/src/` has its first real
 Domain/Application/Infrastructure code: `GET /questions` and
 `POST /question-feedback`, backed by SQLite, per
 [`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
@@ -120,6 +120,27 @@ a real offline reload. One test-only gotcha found along the way, in
 mean Workbox's precache has actually finished populating Cache
 Storage — wait on the cache contents directly, not registration state.
 
+**Slice 6 (`GET /question-feedback`, API only) is now built and
+verified**, per
+[`specs/2026-09-06-slice-6-question-feedback-reconstruction.md`](2026-09-06-slice-6-question-feedback-reconstruction.md):
+reconstructs "already rated" state — a bare, deduplicated array of
+`question_id`s a deck has rated at least once, not a rating-history
+endpoint. Grilling this caught `specs/api.md`'s original sketch
+contradicting itself (it referenced `created_at` for "take the latest
+rating" while never including `created_at` in the response) — resolved
+by dropping `rating`/`created_at` entirely once it turned out the
+frontend only ever needed a presence check. `question_feedback` itself
+stays fully append-only in storage (Slice 2's decision, unchanged);
+this endpoint dedupes in PHP, not SQL `DISTINCT` (Tempest's
+model-based query builder has no `distinct()`). `script/qa` green (30
+PHPUnit + 25 Vitest tests); live-verified against the real dev server
+and SQLite DB — an empty deck returns `[]`, a re-rated question appears
+exactly once in the response while both rating events persist
+underneath, and a malformed `deck_id` returns `400`. **Frontend
+wiring is explicitly out of scope** — `useQuestionDeck.ts` still
+reconstructs `rated_question_ids` from `localStorage` only, not this
+endpoint; that's a later slice, same split as Slice 2 → Slice 3.
+
 A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
 identity, no accounts. It's a design input, not a spec: restate what's
@@ -135,10 +156,14 @@ words, 2026-09-06) — no ops facts (host, domain) assumed here per
 limiting and `/mcp`'s deferred IP/domain restriction once a real
 target exists (`specs/2026-09-06-slice-4-app-feedback.md`).
 
-After Slice 5, still not decided between:
+After Slice 6, still not decided between:
 
-- **Extend `api/`'s scope further** — `GET /question-feedback`,
-  `POST /generate-question` (needs an LLM-provider decision first).
+- **Frontend wiring for `GET /question-feedback`** —
+  `useQuestionDeck.ts` reconciling `rated_question_ids` with the
+  server on load (reinstall/second-device recovery), deferred in
+  `specs/2026-09-06-slice-6-question-feedback-reconstruction.md`.
+- **Extend `api/`'s scope further** — `POST /generate-question` (needs
+  an LLM-provider decision first).
 - **What replaces the end-state message** once every cached question
   is rated — reshuffle or AI-generated questions, the human's own
   framing during Slice 3's grill, explicitly not solved yet.
@@ -233,16 +258,28 @@ reasoning as before Slice 3/4, `VALUES.md` § Product over system.
   the browser's own throttled default — an imminent real deployment
   makes staying current during active testing matter now. Grilled and
   locked in `specs/2026-09-06-slice-5-pwa-offline.md`.
+- **Slice 6 scope: `GET /question-feedback`, API only** — reconstructs
+  "already rated" state as a bare, deduplicated array of `question_id`s
+  (`["uuid1", "uuid2"]`), not rating history — no `rating`, no
+  `created_at`, no row `id`. Corrects `specs/api.md`'s original sketch,
+  which was self-contradictory (referenced `created_at` for "take the
+  latest" without including `created_at` in the response). Dedup
+  happens in PHP, not SQL `DISTINCT` (Tempest's model-based query
+  builder has no `distinct()`); `question_feedback` itself stays fully
+  append-only in storage, unchanged from Slice 2. Frontend wiring
+  explicitly deferred — same split as Slice 2 → Slice 3. Grilled and
+  locked in
+  `specs/2026-09-06-slice-6-question-feedback-reconstruction.md`.
 
 ## Open decisions (not yet made — ask before assuming)
 
 - **Where `generate:typescript-types` (Tempest → TS type generation,
   `specs/api.md`) writes its output** — deferred until real
   Infrastructure DTOs exist to generate from.
-- **`GET /question-feedback`, `POST /generate-question`** — not in
-  Slice 2's or Slice 4's scope; exact 4xx codes, success status, and
-  idempotency shape still need deciding when a later slice actually
-  builds them. (`POST /app-feedback` is now decided — Slice 4.)
+- **`POST /generate-question`** — needs an LLM-provider decision first;
+  exact 4xx codes, success status, and idempotency shape still need
+  deciding when a slice actually builds it. (`GET /question-feedback`
+  is now decided — Slice 6; `POST /app-feedback` — Slice 4.)
 - **Rate limiting / abuse protection on `POST /app-feedback`** — an
   anonymous `deck_id` can submit freely; noted but not solved in
   `specs/2026-09-06-slice-4-app-feedback.md`.

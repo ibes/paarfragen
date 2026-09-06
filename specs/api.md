@@ -64,22 +64,26 @@ sent to clients).
 
 ### `GET /question-feedback`
 
-Returns this deck's own rating history, used to reconstruct "already
-rated" state (first load, reinstall, second device joining the deck).
+Reconstructs "already rated" state (first load, reinstall, second
+device joining the deck) — **not** a rating-history endpoint.
+`question_feedback` itself stays fully append-only in storage (Slice
+2's decision, unchanged); this endpoint only answers "which questions
+has this deck rated at least once."
 
 **Query:** `deck_id` (required).
 
 **200:**
 ```json
-[
-  { "question_id": "uuid", "rating": -5 }
-]
+["uuid1", "uuid2"]
 ```
-`rating` is one of `-5, -1, 1, 5`. One row can exist per past *rating
-event* — re-rating appends, it doesn't overwrite (see `POST
-/question-feedback` below) — so a `question_id` can repeat; the
-frontend takes the latest by `created_at` if it needs a single current
-value, but for the "already rated" check, presence at all is enough.
+A bare array of distinct `question_id`s — no `rating`, no
+`created_at`, no row `id`. A question rated more than once (re-rating
+appends a new row, never overwrites) still appears exactly once here.
+Empty array if the deck has no ratings yet, not `404`. Decided in
+`specs/2026-09-06-slice-6-question-feedback-reconstruction.md`,
+replacing an earlier, self-contradictory sketch (it referenced
+`created_at` for "take the latest" without actually including
+`created_at` in the response).
 
 ### `POST /generate-question`
 
@@ -192,13 +196,15 @@ until real DTOs exist and get built against a spec:
 
 ## Open items for whoever builds against this next
 
-- `GET /question-feedback`, `POST /generate-question` — not built in
-  `specs/2026-09-06-slice-2-questions-feedback-persistence.md` or
-  `specs/2026-09-06-slice-4-app-feedback.md`. Exact 4xx codes,
-  `200`/`201`/`204` choice, and idempotency shape for these still need
-  deciding when a slice actually implements them — the pattern set for
+- `POST /generate-question` — not built yet. Exact 4xx codes,
+  `200`/`201`/`204` choice, and idempotency shape still need deciding
+  when a slice actually implements it — the pattern set for
   `POST /question-feedback` (above) is a reasonable default to start
   from, not a guarantee it fits unchanged.
+- `GET /question-feedback` is now built, API-only
+  (`specs/2026-09-06-slice-6-question-feedback-reconstruction.md`);
+  the frontend still doesn't call it — `useQuestionDeck.ts` reconciling
+  `rated_question_ids` with this endpoint on load is a later slice.
 - `POST /app-feedback` is now built (`specs/2026-09-06-slice-4-app-
   feedback.md`); rate limiting / abuse protection on it, and IP/
   domain-level restriction on the `/mcp` triage route once a real

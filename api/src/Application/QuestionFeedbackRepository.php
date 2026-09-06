@@ -14,4 +14,13 @@ interface QuestionFeedbackRepository
      * specs/2026-09-06-slice-2-questions-feedback-persistence.md.
      */
     public function record(QuestionFeedback $feedback): void;
+
+    /**
+     * Every distinct `question_id` this deck has rated at least once —
+     * not rating history, see
+     * specs/2026-09-06-slice-6-question-feedback-reconstruction.md.
+     *
+     * @return string[]
+     */
+    public function listRatedQuestionIds(string $deckId): array;
 }

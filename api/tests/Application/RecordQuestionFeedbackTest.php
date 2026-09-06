@@ -34,6 +34,11 @@ final class RecordQuestionFeedbackTest extends TestCase
             {
                 self::fail('should not be reached for an unknown question');
             }
+
+            public function listRatedQuestionIds(string $deckId): array
+            {
+                self::fail('should not be reached for an unknown question');
+            }
         };
 
         $useCase = new RecordQuestionFeedback($questions, $feedback);
@@ -70,6 +75,11 @@ final class RecordQuestionFeedbackTest extends TestCase
             public function record(QuestionFeedback $feedback): void
             {
                 $this->recorded[] = $feedback;
+            }
+
+            public function listRatedQuestionIds(string $deckId): array
+            {
+                self::fail('not exercised by this test');
             }
         };
 

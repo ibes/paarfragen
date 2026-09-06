@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Paarfragen\Infrastructure\Http;
 
+use Paarfragen\Application\ListRatedQuestionIds;
 use Paarfragen\Application\RecordQuestionFeedback;
 use Paarfragen\Domain\Exception\UnknownQuestion;
 use Paarfragen\Domain\QuestionFeedback;
@@ -13,7 +14,9 @@ use Tempest\Http\Request;
 use Tempest\Http\Response;
 use Tempest\Http\Responses\Created;
 use Tempest\Http\Responses\NotFound;
+use Tempest\Http\Responses\Ok;
 use Tempest\Http\Status;
+use Tempest\Router\Get;
 use Tempest\Router\Post;
 use Tempest\Router\Stateless;
 use Tempest\Validation\Rules\IsIn;
@@ -35,7 +38,25 @@ final readonly class QuestionFeedbackController
 {
     public function __construct(
         private RecordQuestionFeedback $recordQuestionFeedback,
+        private ListRatedQuestionIds $listRatedQuestionIds,
     ) {}
+
+    /**
+     * Reconstructs "already rated" state — not rating history, see
+     * specs/2026-09-06-slice-6-question-feedback-reconstruction.md.
+     * `deck_id` is query, not body, per GET convention.
+     */
+    #[Get('/question-feedback')]
+    public function index(Request $request): Response
+    {
+        // @mago-expect analysis:mixed-assignment
+        $deckId = $request->get('deck_id');
+        if (!is_string($deckId) || !new IsUuid()->isValid($deckId)) {
+            return $this->badRequest('deck_id must be a UUID.');
+        }
+
+        return new Ok($this->listRatedQuestionIds->handle($deckId));
+    }
 
     #[Post('/question-feedback')]
     public function store(Request $request): Response
