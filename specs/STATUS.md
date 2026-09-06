@@ -60,9 +60,15 @@ trusted.
 
 ## Phase
 
-**Greenfield setup.** Repo skeleton exists (`api/` hexagonal PHP on
-Tempest, `frontend/` Vue/Vite PWA), no product code yet, no spec
-written.
+**Slice 2 built.** `api/src/` now has its first real
+Domain/Application/Infrastructure code: `GET /questions` and
+`POST /question-feedback`, backed by SQLite, per
+[`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
+`script/qa` is green end-to-end, including 9 PHPUnit tests (2
+Application unit + 7 Infrastructure integration) and a manual live
+smoke test against a real `php -S` server. `frontend/` is still the
+scaffold only — nothing there calls the real API yet, it's all still
+ahead.
 
 A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
@@ -73,22 +79,21 @@ the human directly.
 
 ## Next step
 
-**Slice 2 spec locked:**
-[`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md)
-— grilled with the human first (`grill-me`), self-contained, one
-reasoning line per decision. Scope: `GET /questions` +
-`POST /question-feedback` as a real, persisted `api/` implementation
-(SQLite), everything else in `specs/api.md` deferred.
+No locked next slice. Two reasonable directions, not yet decided
+between:
 
-Next: build it. `src/Domain`, `src/Application`, `src/Infrastructure`
-are all still empty (`.gitkeep` only) — this is the first real
-Domain/Application/Infrastructure code in the repo. Follow the slice
-spec and `api/README.md`'s layering. Done when `script/qa` is green
-end-to-end for both endpoints, per `CLAUDE.md`.
+- **Wire `frontend/` against the real API** — replace the (not yet
+  written) mock/placeholder data flow with real calls to
+  `GET /questions` / `POST /question-feedback`, so the actual product
+  loop (question → rate → next) becomes usable end to end for the
+  first time.
+- **Extend `api/`'s scope** — `GET /question-feedback`,
+  `POST /generate-question` (needs an LLM-provider decision first, see
+  `specs/api.md`'s "Open items"), or `POST /app-feedback`.
 
-There is still no `spec` skill in this repo (no `agent/`/vault
-pipeline like the sibling repos this was scaffolded from once had) —
-slice specs are written directly as `specs/*.md` files.
+Ask the human before picking one and grilling a new slice spec — don't
+default to more system/API work over the product becoming usable, per
+`VALUES.md` § Product over system.
 
 ## Decided
 
