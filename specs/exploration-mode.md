@@ -100,10 +100,15 @@ retry after network failure trivially safe.
 |---|---|---|
 | id | uuid | generated client-side |
 | deck_id | uuid | |
-| free_text | string | |
+| free_text | string | required, non-empty |
+| handled_at | timestamp, nullable | set once triaged; `NULL` = still open |
 | created_at | timestamp | |
 
-Feedback about the app itself, not tied to a question.
+Feedback about the app itself, not tied to a question. **Triaged via
+MCP, not deleted** (`specs/2026-09-06-slice-4-app-feedback.md`): a
+Tempest `tempest/mcp` server exposes `listAppFeedback`/
+`markFeedbackHandled` tools so it can be read and marked handled
+directly from a Claude session, once a deployment exists to reach.
 
 ## Identity: `deck_id`
 
@@ -139,7 +144,12 @@ Offline-first. No realtime sync.
   must work with no network at all.
 - Rating/app-feedback submissions write to local state immediately (UI
   never waits on network), then queue for background sending with
-  retry.
+  retry. Ratings use a threshold/online/app-start-triggered queue
+  (Slice 3); app-feedback instead tries to send immediately and only
+  falls back to a queue (flushed on `online`/app-start, no threshold)
+  on network failure — deliberately different, since app-feedback is
+  rare enough that a count threshold would rarely fire
+  (`specs/2026-09-06-slice-4-app-feedback.md`).
 - `POST /generate-question` cannot be queued — it needs a live round
   trip. A multi-second wait is accepted.
 
@@ -165,7 +175,9 @@ One screen, everything visible at once, no staged reveals:
 - Small, visually secondary "new topic" input →
   `POST /generate-question` (exception path, kept unobtrusive).
 - Small, always-reachable entry point for app-level feedback, separate
-  from the question flow.
+  from the question flow — a fixed button, visible in every app state
+  (including the end-state message), opening a modal with just a
+  free-text field (`specs/2026-09-06-slice-4-app-feedback.md`).
 
 Left open, to be decided from real use: whether a rating submits
 instantly or needs a confirm step, and what "Next" does once every

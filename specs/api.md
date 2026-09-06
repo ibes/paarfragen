@@ -140,7 +140,21 @@ idempotency shape as above.
 { "id": "uuid", "deck_id": "uuid", "free_text": "..." }
 ```
 
-**200:** empty body (or `{}` — same open item as above).
+`free_text` is **required, non-empty** — 400 if missing or blank.
+Unlike `question_feedback.free_text`, there's no numeric rating to
+fall back on as signal, so empty app-feedback carries no data. Decided
+in `specs/2026-09-06-slice-4-app-feedback.md`.
+
+**201:** empty body. Decided (not `200`) in
+`specs/2026-09-06-slice-4-app-feedback.md`, consistent with
+`POST /question-feedback`'s `201` above.
+
+**Read/triage side:** not exposed as a `GET` endpoint. A Tempest
+`tempest/mcp` server (`AppFeedbackServer`, `Infrastructure/Mcp/`)
+exposes `listAppFeedback`/`markFeedbackHandled` MCP tools instead, so
+feedback can be triaged directly from a Claude session — see
+`specs/2026-09-06-slice-4-app-feedback.md` for the full design and its
+`/mcp`-route auth scheme.
 
 ## Keeping frontend types in sync: Tempest's TypeScript generation
 
@@ -178,14 +192,18 @@ until real DTOs exist and get built against a spec:
 
 ## Open items for whoever builds against this next
 
-- `GET /question-feedback`, `POST /generate-question`,
-  `POST /app-feedback` — not built in
-  `specs/2026-09-06-slice-2-questions-feedback-persistence.md` (only
-  `GET /questions` + `POST /question-feedback` are). Exact 4xx codes,
-  `200`/`201`/`204` choice, and idempotency shape for these three still
-  need deciding when a slice actually implements them — the pattern
-  set for `POST /question-feedback` (above) is a reasonable default to
-  start from, not a guarantee it fits unchanged.
+- `GET /question-feedback`, `POST /generate-question` — not built in
+  `specs/2026-09-06-slice-2-questions-feedback-persistence.md` or
+  `specs/2026-09-06-slice-4-app-feedback.md`. Exact 4xx codes,
+  `200`/`201`/`204` choice, and idempotency shape for these still need
+  deciding when a slice actually implements them — the pattern set for
+  `POST /question-feedback` (above) is a reasonable default to start
+  from, not a guarantee it fits unchanged.
+- `POST /app-feedback` is now built (`specs/2026-09-06-slice-4-app-
+  feedback.md`); rate limiting / abuse protection on it, and IP/
+  domain-level restriction on the `/mcp` triage route once a real
+  deployment target exists, are still open — see that spec's
+  "Explicitly deferred".
 - Rate limiting / abuse handling on `POST /generate-question` (an LLM
   call an anonymous `deck_id` can trigger freely) — out of scope for
   exploration mode per `specs/exploration-mode.md`, but worth a line

@@ -60,7 +60,7 @@ trusted.
 
 ## Phase
 
-**Slices 2 and 3 both built.** `api/src/` has its first real
+**Slices 2 and 3 both built; Slice 4 spec locked, not yet built.** `api/src/` has its first real
 Domain/Application/Infrastructure code: `GET /questions` and
 `POST /question-feedback`, backed by SQLite, per
 [`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
@@ -90,16 +90,22 @@ the human directly.
 
 ## Next step
 
-No locked next slice. The product now works end to end for the first
-time (core question/rating loop, real API, real persistence) — several
-reasonable directions from here, not yet decided between:
+**Slice 4 (App-Feedback: submit, queue, MCP-driven triage) is locked**
+(`specs/2026-09-06-slice-4-app-feedback.md`) — not yet implemented.
+Grilled 2026-09-06: `POST /app-feedback` + a small always-reachable
+frontend entry point (as Slice 2/3 deferred), plus a `tempest/mcp`
+server (`AppFeedbackServer`) exposing `listAppFeedback`/
+`markFeedbackHandled` tools so feedback can be triaged directly from a
+Claude session, protected by a dedicated bearer-token +
+signed-timestamp middleware on the `/mcp` route only.
+
+After Slice 4, still not decided between:
 
 - **Real PWA app-shell offline** — icons, service-worker precaching,
   installability. Slice 3 deliberately deferred this (its own spec's
   "explicitly out of scope").
-- **Extend `api/`'s scope** — `GET /question-feedback`,
-  `POST /generate-question` (needs an LLM-provider decision first),
-  or `POST /app-feedback`.
+- **Extend `api/`'s scope further** — `GET /question-feedback`,
+  `POST /generate-question` (needs an LLM-provider decision first).
 - **What replaces the end-state message** once every cached question
   is rated — reshuffle or AI-generated questions, the human's own
   framing during Slice 3's grill, explicitly not solved yet.
@@ -109,7 +115,7 @@ reasonable directions from here, not yet decided between:
   research instrument.
 
 Ask the human before picking one and grilling a new slice spec — same
-reasoning as before Slice 3, `VALUES.md` § Product over system.
+reasoning as before Slice 3/4, `VALUES.md` § Product over system.
 
 ## Decided
 
@@ -163,16 +169,35 @@ reasoning as before Slice 3, `VALUES.md` § Product over system.
   production too) started making real cross-origin requests — found
   missing by Slice 3's live browser smoke test, not by any automated
   test. `api/src/Infrastructure/Http/CorsMiddleware.php`.
+- **Slice 4 scope: `POST /app-feedback` (write) + its frontend entry
+  point + an MCP-based triage side, one slice** — `free_text` required
+  (unlike `question_feedback`'s nullable one), `201` on success,
+  app-feedback's own immediate-then-fallback-queue offline behavior
+  (not `question_feedback`'s threshold queue), `handled_at` marks a
+  row triaged rather than deleting it. The triage/read side uses
+  Tempest's built-in `tempest/mcp` component (experimental, but no
+  separate infrastructure — one more route on the same `api/`
+  deployment) instead of a `GET` endpoint, protected by a
+  bearer-token + signed-timestamp middleware scoped to the `/mcp`
+  route only. No IP/domain restriction — not reliably implementable
+  (no stable published IP range for MCP client traffic). Grilled and
+  locked in `specs/2026-09-06-slice-4-app-feedback.md`.
 
 ## Open decisions (not yet made — ask before assuming)
 
 - **Where `generate:typescript-types` (Tempest → TS type generation,
   `specs/api.md`) writes its output** — deferred until real
   Infrastructure DTOs exist to generate from.
-- **`GET /question-feedback`, `POST /generate-question`,
-  `POST /app-feedback`** — not in Slice 2's scope; exact 4xx codes,
-  success status, and idempotency shape for these three still need
-  deciding when a later slice actually builds them.
+- **`GET /question-feedback`, `POST /generate-question`** — not in
+  Slice 2's or Slice 4's scope; exact 4xx codes, success status, and
+  idempotency shape still need deciding when a later slice actually
+  builds them. (`POST /app-feedback` is now decided — Slice 4.)
+- **Rate limiting / abuse protection on `POST /app-feedback`** — an
+  anonymous `deck_id` can submit freely; noted but not solved in
+  `specs/2026-09-06-slice-4-app-feedback.md`.
+- **IP/domain-level restriction on the `/mcp` triage route** — deferred
+  until a real deployment target exists (no stable IP range to
+  restrict to before then). `specs/2026-09-06-slice-4-app-feedback.md`.
 - **End-user UI language** — repo content is English by house rule,
   but the product's name and its original design input are German; a
   German-language UI is plausible but not decided. Current placeholder
