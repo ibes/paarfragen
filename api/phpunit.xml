@@ -5,6 +5,7 @@
          colors="true">
     <php>
         <env name="ENVIRONMENT" value="testing"/>
+        <env name="MCP_AUTH_TOKEN" value="testing-mcp-auth-token"/>
     </php>
     <testsuites>
         <testsuite name="domain">

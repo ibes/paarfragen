@@ -160,11 +160,17 @@ real caveat for an internal tool, not a blocker.
 
 Two tools, both container-resolving an `AppFeedbackRepository` (the
 same Application-layer port the HTTP controller and `POST
-/app-feedback` use case depend on):
+/app-feedback` use case depend on). PHP method names stay camelCase
+(`listAppFeedback`/`markFeedbackHandled`), but the *MCP tool names* a
+client actually calls are Tempest's default snake-cased form —
+`list_app_feedback`/`mark_feedback_handled` (`tempest/mcp`'s own
+documented default: "the tool name defaults to the snake-cased method
+name"; not overridden with an explicit `name:` since that's the
+idiomatic default for this ecosystem, not a real design decision):
 
-- **`listAppFeedback()`** — returns every row where `handled_at IS
+- **`list_app_feedback`** — returns every row where `handled_at IS
   NULL`, as `{id, deck_id, free_text, created_at}`.
-- **`markFeedbackHandled(id)`** — sets `handled_at = now()` for the
+- **`mark_feedback_handled(id)`** — sets `handled_at = now()` for the
   row matching `id`. No-op (not an error) if already handled or if
   `id` doesn't exist — a triage tool re-run against the same list
   shouldn't fail on a row already processed by an earlier call.
@@ -188,11 +194,18 @@ The MCP route needs its own protection — `app_feedback` rows aren't
 deck-scoped or otherwise access-controlled, so an unprotected `/mcp`
 route would let anyone read every submitted feedback row.
 
-- **`McpAuthMiddleware`** (`Infrastructure/Http/`), applied only to
-  `AppFeedbackServer` via Tempest's `#[WithMiddleware]` route decorator
-  (`api/vendor/tempest/framework/docs/1-essentials/01-routing.md`) —
-  **not** global, unlike `CorsMiddleware`. `#[SkipDiscovery]` so it's
-  never picked up automatically.
+- **`McpAuthMiddleware`** (`Infrastructure/Http/`) — **global, like
+  `CorsMiddleware`, not route-scoped.** The spec originally planned a
+  `#[WithMiddleware]` route decorator on `AppFeedbackServer` (Tempest's
+  documented "protect the route... through a route decorator"
+  pattern) — implementation found this has no effect: Tempest's own
+  `Tempest\Mcp\McpDiscovery::registerRoutes()` always points every
+  discovered `#[McpServer]`'s route at the same generic
+  `Tempest\Mcp\McpHttpController`, with a hardcoded decorator list
+  that never reads anything off the server class itself. Corrected to
+  a normally-discovered (no `#[SkipDiscovery]`) middleware that no-ops
+  on every request except `/mcp`, scoping itself internally instead of
+  relying on route registration to do it. See `FRICTION.md`.
 - Checks two things on every request to `/mcp`:
   1. `Authorization: Bearer <token>` — the token is a single shared
      secret read from an env var (`MCP_AUTH_TOKEN`) via a
@@ -248,9 +261,9 @@ a separate read path — one adapter, two Infrastructure entry points
   network; a submission made while offline lands in the DB once back
   online (verified live, same Playwright-smoke-test approach as Slice
   3 — CORS-style bugs only show up against a real browser).
-- MCP: `listAppFeedback` returns only unhandled rows;
-  `markFeedbackHandled` sets `handled_at` and the row drops out of a
-  subsequent `listAppFeedback` call; both verified via
+- MCP: `list_app_feedback` returns only unhandled rows;
+  `mark_feedback_handled` sets `handled_at` and the row drops out of a
+  subsequent `list_app_feedback` call; both verified via
   `IntegrationTest.mcp`, per `tempest/mcp`'s own testing helper.
 - `/mcp` rejects a request with a missing/wrong token, and a request
   with a valid token but a stale (>10 min) or wrong-signature

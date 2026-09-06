@@ -190,3 +190,32 @@ class for `no-undef` in TypeScript projects, which is why
 disabling `no-undef` in `frontend/eslint.config.js` (see that file's
 own comment for the reasoning) rather than reaching for a `globals`
 npm package to re-declare what TypeScript already knows.
+
+## 2026-09-06 — Tempest's MCP docs say route decorators protect a server's route; the actual routing code ignores them
+
+`tempest/mcp`'s docs (`docs/2-features/20-mcp.md`) say an
+`#[McpServer(path: ...)]`'s route can be protected "by adding
+middleware through a route decorator." Building
+`AppFeedbackServer`'s `/mcp` route (Slice 4), a
+`#[WithMiddleware(McpAuthMiddleware::class)]` on the server class
+turned out to be a silent no-op: `Tempest\Mcp\McpDiscovery::
+registerRoutes()` always points every discovered server's route at
+the same generic `Tempest\Mcp\McpHttpController`, with a hardcoded
+decorator list (`[new WithoutMiddleware(PreventCrossSiteRequests
+Middleware::class)]`) that never reads anything off the server class
+itself. Caught only by reading `McpDiscovery.php`'s actual source
+instead of trusting the docs sentence — and the framework's own
+`IntegrationTest.mcp` test helper (`$this->mcp->onServer(...)`) drives
+the protocol in-process via `McpRequestHandler` directly, bypassing
+HTTP/middleware entirely, so a test written only against that helper
+would never have caught this either; a real HTTP request via
+`$this->http->post('/mcp', ...)` was needed. Fixed by making
+`McpAuthMiddleware` (`api/src/Infrastructure/Http/
+McpAuthMiddleware.php`) a normally-discovered **global** middleware
+(same shape as `CorsMiddleware`) that no-ops unless `$request->path
+=== '/mcp'`, instead of route-scoped. Would help: whoever adds
+another `#[McpServer]` here should assume route decorators on the
+server class do nothing, and reach for this same self-scoping-global-
+middleware pattern — or the docs' *other* suggestion, "placing the
+server behind your existing authentication middleware," which does
+hold up since that's exactly a global middleware already.

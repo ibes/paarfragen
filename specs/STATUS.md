@@ -178,10 +178,15 @@ reasoning as before Slice 3/4, `VALUES.md` § Product over system.
   Tempest's built-in `tempest/mcp` component (experimental, but no
   separate infrastructure — one more route on the same `api/`
   deployment) instead of a `GET` endpoint, protected by a
-  bearer-token + signed-timestamp middleware scoped to the `/mcp`
-  route only. No IP/domain restriction — not reliably implementable
-  (no stable published IP range for MCP client traffic). Grilled and
-  locked in `specs/2026-09-06-slice-4-app-feedback.md`.
+  bearer-token + signed-timestamp middleware. That middleware is
+  **global** (like `CorsMiddleware`), not a `#[WithMiddleware]` route
+  decorator as originally planned — Tempest's own MCP route
+  registration ignores decorators on the `#[McpServer]` class, found
+  during implementation, not in the docs; the middleware scopes itself
+  to `/mcp` internally instead. No IP/domain restriction — not
+  reliably implementable (no stable published IP range for MCP client
+  traffic). Grilled and locked in
+  `specs/2026-09-06-slice-4-app-feedback.md`.
 
 ## Open decisions (not yet made — ask before assuming)
 
