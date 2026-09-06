@@ -54,6 +54,19 @@ Hexagon still wins in `Domain/`/`Application/`.
   JSON body — looks exactly like the controller is broken. It isn't:
   content negotiation working as designed. Always pass
   `Accept: application/json` when smoke-testing an endpoint by hand.
+- **A middleware that must run before routing (CORS preflight,
+  anything that needs to answer for a path/method with no registered
+  route) needs a priority below `Tempest\Router\MatchRouteMiddleware`'s
+  own (`Priority::FRAMEWORK - 29`, i.e. `-30`).** `MatchRouteMiddleware`
+  returns its own `NotFound` directly, without calling `$next()`, the
+  moment nothing matches — a lower-priority (numerically higher, per
+  `Tempest\Support\Priority`: lower number runs first) middleware
+  downstream never even runs for that request. An `OPTIONS` preflight
+  almost never matches a real route (only `GET`/`POST`/… are
+  registered), so a global CORS middleware has to sit *before*
+  `MatchRouteMiddleware` — e.g. `#[Priority(-50)]` — not rely on the
+  normal global-middleware-runs-on-every-route assumption. See
+  `api/src/Infrastructure/Http/CorsMiddleware.php`.
 
 ## View / Request / Bindable — the object shapes Tempest expects
 

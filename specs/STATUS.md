@@ -60,16 +60,26 @@ trusted.
 
 ## Phase
 
-**Slice 2 built, Slice 3 spec locked.** `api/src/` has its first real
+**Slices 2 and 3 both built.** `api/src/` has its first real
 Domain/Application/Infrastructure code: `GET /questions` and
 `POST /question-feedback`, backed by SQLite, per
 [`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
-`script/qa` is green end-to-end, including 9 PHPUnit tests (2
-Application unit + 7 Infrastructure integration) and a manual live
-smoke test against a real `php -S` server. `frontend/` is still the
-scaffold only — nothing there calls the real API yet — but Slice 3's
-spec (wiring the core loop against it) is now locked; building it is
-next.
+`frontend/src/` now has its first real code too: the core
+question/rating loop wired against that API, per
+[`specs/2026-09-06-slice-3-frontend-api-wiring.md`](2026-09-06-slice-3-frontend-api-wiring.md)
+— a client-generated `deck_id`, a `localStorage`-persisted offline
+queue for ratings, a plain Vue composable, no Pinia. `script/qa` is
+green end-to-end (9 PHPUnit + 16 Vitest tests, `vue-tsc`, the frontend
+build), and the whole loop was verified live in a real browser against
+both real dev servers (`script/dev-api` + `npm run dev`) — including a
+rating actually landing in the SQLite database after a queue flush.
+That live pass caught a real gap unit tests couldn't: `api/` had no
+CORS headers, so every cross-origin `fetch()` from `frontend/` was
+silently blocked by the browser. Fixed with
+`api/src/Infrastructure/Http/CorsMiddleware.php` — see `FRICTION.md`
+and `api/reference/tempest.md` for the middleware-priority gotcha that
+came with it (a CORS preflight has to be intercepted *before*
+Tempest's own route-matching middleware, not after).
 
 A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
@@ -80,23 +90,26 @@ the human directly.
 
 ## Next step
 
-**Slice 3 spec locked:**
-[`specs/2026-09-06-slice-3-frontend-api-wiring.md`](2026-09-06-slice-3-frontend-api-wiring.md)
-— grilled with the human first (`grill-me`), self-contained, one
-reasoning line per decision. Scope: the core question/rating loop in
-`frontend/`, wired against Slice 2's real `GET /questions` +
-`POST /question-feedback`, with a client-generated `deck_id` and an
-offline-tolerant local queue for rating submissions. Branch:
-`claude/ibes-paarfragen-frontend-api-wiring`.
+No locked next slice. The product now works end to end for the first
+time (core question/rating loop, real API, real persistence) — several
+reasonable directions from here, not yet decided between:
 
-Next: build it. `frontend/src/` is still the Vite scaffold only
-(`App.vue`/`main.ts`/`style.css`) — this is the first real frontend
-code. Follow the slice spec. Done when `script/qa` is green
-end-to-end, per `CLAUDE.md`.
+- **Real PWA app-shell offline** — icons, service-worker precaching,
+  installability. Slice 3 deliberately deferred this (its own spec's
+  "explicitly out of scope").
+- **Extend `api/`'s scope** — `GET /question-feedback`,
+  `POST /generate-question` (needs an LLM-provider decision first),
+  or `POST /app-feedback`.
+- **What replaces the end-state message** once every cached question
+  is rated — reshuffle or AI-generated questions, the human's own
+  framing during Slice 3's grill, explicitly not solved yet.
+- **Real use** — the app is usable now; actually using it with a real
+  couple is itself a way to learn what's missing, per
+  `specs/exploration-mode.md`'s own framing of exploration mode as a
+  research instrument.
 
-`api/`'s remaining scope (`GET /question-feedback`,
-`POST /generate-question`, `POST /app-feedback`) stays deferred — see
-§ Open decisions.
+Ask the human before picking one and grilling a new slice spec — same
+reasoning as before Slice 3, `VALUES.md` § Product over system.
 
 ## Decided
 
@@ -142,6 +155,14 @@ end-to-end, per `CLAUDE.md`.
   Pinia/HTTP library. Real PWA app-shell offline (icons,
   service-worker precaching) deferred. Grilled and locked in
   `specs/2026-09-06-slice-3-frontend-api-wiring.md`.
+- **`api/` sends `Access-Control-Allow-Origin: *`** (not an
+  allow-list) — `deck_id` travels only in request bodies/query params,
+  never a cookie, so there's no ambient credential for another origin
+  to piggyback on. Needed once `frontend/` (a different origin in dev
+  and, per the decoupled-directories decision above, likely in
+  production too) started making real cross-origin requests — found
+  missing by Slice 3's live browser smoke test, not by any automated
+  test. `api/src/Infrastructure/Http/CorsMiddleware.php`.
 
 ## Open decisions (not yet made — ask before assuming)
 

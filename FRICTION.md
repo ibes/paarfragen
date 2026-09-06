@@ -119,3 +119,23 @@ handling makes `httpie` think a body is piped in, even though it isn't.
 `--ignore-stdin` fixes it every time. Not Tempest/mago-specific, just a
 tooling quirk worth remembering for the next manual API smoke test in
 this kind of session.
+
+## 2026-09-06 — Slice 2's tests never caught a missing CORS setup, only a real browser did
+
+Wiring `frontend/` against the real API (Slice 3), `script/qa` was
+fully green — PHPUnit, Vitest with `fetch` mocked, `vue-tsc`, build —
+and the app still didn't work: every real browser fetch from
+`http://127.0.0.1:5173` (Vite dev server) to `http://127.0.0.1:8000`
+(`script/dev-api`) was blocked by the browser's CORS policy, since
+`api/` never sent `Access-Control-Allow-Origin`. Neither PHPUnit's
+`IntegrationTest` (calls controllers in-process, no real HTTP, no
+browser) nor Vitest (fetch is mocked) can catch this class of bug —
+only an actual browser hitting an actual cross-origin server does.
+Same lesson as Slice 2's `#[Stateless]` miss, this time on the
+frontend side: a live smoke test (Playwright against `script/dev-api`
++ `npm run dev`, both real processes) is not optional once two
+separately-served halves of the app need to talk to each other.
+Fixed with `api/src/Infrastructure/Http/CorsMiddleware.php` — see that
+file's own docblock for a second gotcha found getting it right
+(middleware priority vs. `MatchRouteMiddleware`, also added to
+`api/reference/tempest.md`).
