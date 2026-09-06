@@ -60,7 +60,7 @@ trusted.
 
 ## Phase
 
-**Slices 2 and 3 both built; Slice 4 spec locked, not yet built.** `api/src/` has its first real
+**Slices 2, 3, and 4 all built.** `api/src/` has its first real
 Domain/Application/Infrastructure code: `GET /questions` and
 `POST /question-feedback`, backed by SQLite, per
 [`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
@@ -81,6 +81,29 @@ and `api/reference/tempest.md` for the middleware-priority gotcha that
 came with it (a CORS preflight has to be intercepted *before*
 Tempest's own route-matching middleware, not after).
 
+**Slice 4 (App-Feedback: submit, queue, MCP-driven triage) is now
+built and verified**, per
+[`specs/2026-09-06-slice-4-app-feedback.md`](2026-09-06-slice-4-app-feedback.md):
+`POST /app-feedback` (25 PHPUnit tests total now, up from 9), a small
+fixed feedback button/modal in `frontend/` (25 Vitest tests total, up
+from 16), and a `tempest/mcp` server (`AppFeedbackServer`) exposing
+`list_app_feedback`/`mark_feedback_handled` tools, protected by
+`McpAuthMiddleware` (bearer token + signed timestamp). `script/qa`
+green end-to-end; live-verified against real dev servers and the real
+SQLite DB — a submitted row landing in the database, a real MCP
+`tools/call` request over HTTP listing and then marking that row
+handled, a browser-driven Playwright run of the feedback button/modal
+(including the offline-queue-then-flush-on-reconnect path), and the
+`/mcp` route's 401 rejection of a request with no auth headers. Two
+implementation-time corrections to the locked spec surfaced along the
+way — both in `FRICTION.md` and `api/reference/tempest.md`: the MCP
+route can't be protected via a `#[WithMiddleware]` route decorator
+(Tempest's own MCP routing ignores it; `McpAuthMiddleware` is global
+instead, scoping itself to `/mcp`), and a model property needs no `=
+null` default to be excluded from an `INSERT` (a defaulted nullable
+property still sends an explicit `NULL`, which broke `created_at`'s
+`NOT NULL` constraint).
+
 A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
 identity, no accounts. It's a design input, not a spec: restate what's
@@ -90,16 +113,7 @@ the human directly.
 
 ## Next step
 
-**Slice 4 (App-Feedback: submit, queue, MCP-driven triage) is locked**
-(`specs/2026-09-06-slice-4-app-feedback.md`) — not yet implemented.
-Grilled 2026-09-06: `POST /app-feedback` + a small always-reachable
-frontend entry point (as Slice 2/3 deferred), plus a `tempest/mcp`
-server (`AppFeedbackServer`) exposing `listAppFeedback`/
-`markFeedbackHandled` tools so feedback can be triaged directly from a
-Claude session, protected by a dedicated bearer-token +
-signed-timestamp middleware on the `/mcp` route only.
-
-After Slice 4, still not decided between:
+No locked next slice. After Slice 4, still not decided between:
 
 - **Real PWA app-shell offline** — icons, service-worker precaching,
   installability. Slice 3 deliberately deferred this (its own spec's
@@ -109,6 +123,10 @@ After Slice 4, still not decided between:
 - **What replaces the end-state message** once every cached question
   is rated — reshuffle or AI-generated questions, the human's own
   framing during Slice 3's grill, explicitly not solved yet.
+- **Rate limiting / abuse protection on `POST /app-feedback`, and
+  IP/domain-level restriction on `/mcp`** — both explicitly deferred
+  in `specs/2026-09-06-slice-4-app-feedback.md` (the latter until a
+  real deployment target exists).
 - **Real use** — the app is usable now; actually using it with a real
   couple is itself a way to learn what's missing, per
   `specs/exploration-mode.md`'s own framing of exploration mode as a

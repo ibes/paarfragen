@@ -67,6 +67,39 @@ Hexagon still wins in `Domain/`/`Application/`.
   `MatchRouteMiddleware` — e.g. `#[Priority(-50)]` — not rely on the
   normal global-middleware-runs-on-every-route assumption. See
   `api/src/Infrastructure/Http/CorsMiddleware.php`.
+- **`tempest/mcp`: a route decorator on the `#[McpServer]` class does
+  nothing.** The docs (`docs/2-features/20-mcp.md`) say the server's
+  auto-registered `path` route can be "protected... by adding
+  middleware through a route decorator" — untrue for the actual
+  routing. `Tempest\Mcp\McpDiscovery::registerRoutes()` always points
+  every discovered server's route at the same generic
+  `Tempest\Mcp\McpHttpController`, using a hardcoded decorator list
+  that never reads anything off the server class. A
+  `#[WithMiddleware(...)]` on the `#[McpServer]` class is silently a
+  no-op. To actually protect it: a normally-discovered **global**
+  middleware (same shape as `CorsMiddleware` above) that scopes
+  *itself* to the server's path (`$request->path === '/mcp'`) and
+  no-ops otherwise. Also: the framework's own `IntegrationTest.mcp`
+  test helper (`$this->mcp->onServer(...)`) drives the protocol
+  in-process via `McpRequestHandler` directly — it bypasses HTTP and
+  middleware entirely, so it can't be used to test this either; use a
+  real `$this->http->post($mcpPath, ...)` request instead. See
+  `api/src/Infrastructure/Http/McpAuthMiddleware.php` and
+  `FRICTION.md`.
+- **A model property with a `= null` default is sent as an explicit
+  `NULL` on insert — it is NOT the same as "leave it to the column
+  default."** Tempest's `ModelInspector::getPropertyValues()` (used to
+  build an `INSERT`) skips a property only if it is genuinely
+  *uninitialized*; a typed property with a default value is
+  initialized the moment the object is constructed, default and all.
+  For a nullable column with a `NOT NULL` + `current: true` default
+  (`CreateTableStatement::datetime(..., current: true)`), that explicit
+  `NULL` trips the `NOT NULL` constraint. Declare the property with
+  **no default at all** (`public ?string $handled_at;`, not `= null`)
+  to exclude it from inserts while it stays fully readable after a
+  `select()` populates it via reflection — same trick `PrimaryKey $id`
+  already relies on for a server/client-generated id. See
+  `api/src/Infrastructure/Persistence/AppFeedbackModel.php`.
 
 ## View / Request / Bindable — the object shapes Tempest expects
 
@@ -100,6 +133,16 @@ Two patterns worth knowing before the first attempt:
   `lint:*` codes works for analyzer codes too, confirmed empirically;
   `bin/mago analyze --list-codes` lists every valid code.) See
   `api/src/Infrastructure/Http/QuestionFeedbackController.php`.
+  **Don't copy-paste another file's `@mago-expect` block for the same
+  `query()` stub-typing issue** — the exact codes and count depend on
+  how many properties/constructor args that call site touches (e.g.
+  `DatabaseQuestionRepository::all()`'s 2-property loop needed
+  `invalid-property-access`×2 + `null-argument`×1, while
+  `DatabaseAppFeedbackRepository::listUnhandled()`'s 4-property loop
+  needed `mixed-assignment`×1 + `mixed-property-access`×4 +
+  `mixed-argument`×3 — different codes entirely, not just a different
+  count). Run `bin/mago analyze <file>` directly and use its exact
+  `warning[...]`/`error[...]` codes.
 - **`*.config.php` discovery files need an explicit namespace.**
   `mago.toml`'s `[guard.perimeter]` only permits a Tempest dependency
   from a namespace it recognizes (`Paarfragen\Infrastructure\`,

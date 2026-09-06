@@ -218,4 +218,45 @@ another `#[McpServer]` here should assume route decorators on the
 server class do nothing, and reach for this same self-scoping-global-
 middleware pattern — or the docs' *other* suggestion, "placing the
 server behind your existing authentication middleware," which does
-hold up since that's exactly a global middleware already.
+hold up since that's exactly a global middleware already. Also added
+to `api/reference/tempest.md`'s "Framework gotchas" (found during this
+build's retro pass — should have gone there the first time, not just
+here).
+
+## 2026-09-06 — A model's `= null` default sends an explicit NULL on insert, breaking a NOT NULL + current-timestamp column
+
+Found during Slice 4's retro: not logged in the moment even though it
+cost real debugging time (a `PDOException: NOT NULL constraint failed`
+traced back through five layers of router/middleware stack trace).
+`AppFeedbackModel::$created_at` was declared `public ?string
+$created_at = null;`, mirroring how a "this field isn't always set"
+property normally looks. Tempest's `ModelInspector::getPropertyValues()`
+(used to build an `INSERT`) only skips a property that's genuinely
+*uninitialized* — a typed property with a `= null` default is
+initialized the instant the object is constructed, so it got sent as
+an explicit `NULL`, tripping the column's `NOT NULL` + `current: true`
+default (`CreateAppFeedbackTable`). Fixed by dropping the `= null`
+entirely (`public ?string $created_at;`, no default) — same trick
+`QuestionFeedbackModel`'s `PrimaryKey $id` already uses for a
+sometimes-absent value. Added to `api/reference/tempest.md`'s
+"Framework gotchas" so the next model with an optional/DB-managed
+column doesn't rediscover this via a stack trace.
+
+## 2026-09-06 — Bash tool's `run_in_background: true` on a command that already backgrounds itself with `&` reports "exited" while the process is still alive
+
+Starting `script/dev-api`/`script/dev-frontend` for Slice 4's live
+smoke test, the first attempt ran `script/dev-api > log 2>&1 &` *and*
+passed `run_in_background: true` to the Bash tool. The tool reported
+"[exited with code 0]" almost immediately — read as the dev server
+having failed to start — but a later `curl` against the port it was
+supposed to bind succeeded, and a retry attempt failed with "port
+already allocated." The first process was never dead; only the outer
+wrapper shell (the one holding the trailing `&`) exited immediately,
+which is what the tool's exit-code report actually reflects when a
+command backgrounds itself a second time on top of the tool's own
+backgrounding. Cost a few minutes of confused re-diagnosis (restart
+attempt, port-conflict error, only then checking with `curl` whether
+the "exited" process was actually still serving). Would help: when
+using `run_in_background: true`, pass the plain foreground command
+(`script/dev-api`, no trailing `&`, no output redirection) and let the
+tool handle backgrounding itself — never combine the two.
