@@ -989,3 +989,27 @@ doesn't silently go stale. Lives in `script/lib/` (not top-level
 confirmed `script/check-script-integrity`/`check-shell` only scan
 `script/*` non-recursively, so it's correctly exempt from the
 Description/Side-effects header those enforce.
+
+## 2026-09-06 — Added `frontend/reference/vue.md`
+
+New file, mirroring `api/reference/tempest.md`'s role for `api/`: a
+"Framework/tooling gotchas" doc, cross-referenced from
+`frontend/README.md`'s new "House rules" section (matching
+`api/README.md`'s own pointer to `api/reference/`).
+
+**Why:** an `IDEAS.md` entry had tracked this since Slice 3, deferred
+until "a third or fourth frontend-specific gotcha lands" — Slice 5's
+retro found the fourth (a service-worker `active`/`controller`-state
+vs. Workbox-precache-timing gotcha), crossing that stated threshold.
+Consolidated five gotchas total into the new doc: the two already
+inline in `frontend/eslint.config.js`'s comments (`no-undef` off,
+type-checked ESLint's `.vue` interop problem), the three already in
+`script/lib/playwright-launch.mjs`'s header comment (absolute import
+path, versioned Chromium binary, `waitUntil: "networkidle"` hanging
+against Vite's dev server), plus the new Workbox one, which had no
+natural code-comment home of its own. Existing inline comments were
+left in place (same "both, not either" pattern `api/reference/
+tempest.md`'s mixed-assignment entry already uses) — the reference doc
+is for finding a gotcha *before* writing the code that would trip it,
+not a replacement for the reasoning at its point of use. Deleted the
+now-fulfilled `IDEAS.md` entry rather than leaving it to go stale.

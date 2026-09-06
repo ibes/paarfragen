@@ -105,41 +105,6 @@ of an actual violation. Revisit once `frontend/src/` is big enough
 that "just don't do that" stops being a reliable convention on its
 own.
 
-## `frontend/reference/` — a Vue/Vite/tooling gotchas doc, mirroring `api/reference/`
-
-**What:** A `frontend/reference/` doc (or a `frontend/reference/
-vue.md`) for framework/tooling behavior that's surprising and worth
-not rediscovering — the same role `api/reference/tempest.md`'s
-"Framework gotchas" section plays for `api/`.
-**Why it might matter:** four gotchas have landed so far, each parked
-in a different spot rather than one lookup place: ESLint's `no-undef`
-not knowing about tsconfig's DOM lib (fixed, reasoning lives in an
-inline `eslint.config.js` comment); Playwright's absolute-import-path
-and versioned-Chromium-binary quirks, and `waitUntil: "networkidle"`
-hanging against Vite's dev server (all three folded into
-`script/lib/playwright-launch.mjs`'s header comment once that helper
-got built, Slice 4's retro); and, from Slice 5, a service worker's
-`active`/`controller` state not meaning Workbox's precache has
-actually finished populating Cache Storage (currently only in
-`FRICTION.md` + that slice's own spec — no natural code-comment home
-this time, since it's a testing-methodology fact, not tied to one
-helper file). None of these are hard to find individually, but there's
-still nowhere a future session would look *before* writing frontend
-code the way `api/reference/tempest.md` is read up front for `api/`
-work — each gotcha's home was decided ad hoc, after the fact.
-**Rough shape:** Same shape as `api/reference/tempest.md`'s "Framework
-gotchas" section — short, dated-free bullets, referenced from
-`frontend/README.md`'s "Toolchain" section the way `api/README.md`
-points at `api/reference/`.
-**Not now because:** the originally-stated "third or fourth gotcha"
-threshold has technically been reached (this is the fourth) — worth
-raising with the human next time frontend work happens, rather than
-building it unasked mid-retro (per the `retro` skill's own rule: no
-inventing a reference doc on the spot). Still not been a real cost
-yet — none of the four needed rediscovering from scratch, each had
-*some* documented home — so it's a "should probably happen soon," not
-a "was actively painful this build."
-
 ## A named spec template shape
 
 **What:** A concrete field set for the first real slice spec: Goal /
