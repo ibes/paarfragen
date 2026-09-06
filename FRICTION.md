@@ -21,10 +21,19 @@ Not this file:
 obvious.>
 ```
 
-When something here gets acted on: remove the entry, and if it became a
-real decision, log that in `SETUP-LOG.md` instead. Don't let a resolved
-entry linger here.
+Writing an `IDEAS.md` entry for the fix does not resolve this — the
+friction itself is still live until the fix is actually built. Cross-
+reference `IDEAS.md` and keep the entry here. When the underlying gap
+is actually fixed: remove the entry, and log the real decision in
+`SETUP-LOG.md` instead. Don't let a truly resolved entry linger here.
 
 ---
 
-(No entries yet.)
+## 2026-09-06 — `/housekeeping` has no backing script
+
+The `housekeeping` skill expects `script/check-repo-hygiene`; without
+it, the skill falls back to manually re-deriving branch/upstream/
+ahead-behind/status/worktree facts by hand from `git` — happened twice
+in one session, identically. See `IDEAS.md`'s "`script/check-repo-hygiene`
+to back the `/housekeeping` skill" entry for the fix; this entry stays
+until that's actually built.

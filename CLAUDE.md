@@ -34,6 +34,12 @@ cross-platform shell without touching the API.
   `FRICTION.md`. A real tool/pattern that solves a problem this repo
   doesn't have yet → an entry in `IDEAS.md`. Neither blocks anything;
   both exist so nobody re-derives the same thing later.
+  Do the `FRICTION.md` line *first*, even when a considered `IDEAS.md`
+  entry is about to follow right behind it — a fix idea for a gap
+  doesn't close the gap, so the friction entry stays open (cross-
+  referencing the idea) until the gap is actually built. Don't skip
+  straight to writing the idea just because the annoyance has already
+  become clear enough to describe well.
 
 ## Load path
 

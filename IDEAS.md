@@ -227,6 +227,9 @@ easy to get wrong.
 
 ## `script/check-repo-hygiene` to back the `/housekeeping` skill
 
+Live friction, not just a someday idea — see `FRICTION.md`'s matching
+entry, which stays open until this is actually built.
+
 **What:** A read-only script the `housekeeping` skill runs instead of
 an agent re-deriving the same handful of `git` commands from scratch
 each time: current branch, upstream + ahead/behind counts, last
