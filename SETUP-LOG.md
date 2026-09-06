@@ -947,3 +947,23 @@ custom trait could reproduce the `Model::create()` convenience without
 that restriction, and was considered, but rejected: two models with a
 handful of call sites each don't justify the abstraction
 (`VALUES.md`).
+
+## 2026-09-06 — Added the `retro` skill
+
+New skill, `.claude/skills/retro/SKILL.md` — a wrap-up pass right after
+a feature/slice/fix goes green, reconstructing the whole build for
+friction that happened but wasn't logged in the moment, and deciding
+whether a reusable gotcha belongs in a reference doc (`api/reference/
+*.md`, …), not just `FRICTION.md`.
+
+**Why:** built after a retro on Slice 2 itself surfaced exactly this
+gap — three real gotchas (a `#[Stateless]` requirement, a mago
+`mixed-assignment` idiom, a content-negotiation debug-page surprise)
+happened during the build but were never logged until asked, and none
+of them had made it into `api/reference/tempest.md` even though that
+file exists precisely for "framework gotchas not obvious from a quick
+skim." `friction` already covers logging one thing as it happens;
+nothing covered the retrospective sweep once real work lands, or the
+"does this belong in a reference doc too" question. Deliberately
+scoped narrower than `IDEAS.md`'s "Extended kaizen" entry (a periodic,
+whole-agent-setup audit) — this is per-build, not on a time cadence.

@@ -32,6 +32,28 @@ Hexagon still wins in `Domain/`/`Application/`.
   can pass while the page looks empty in a real browser. Use
   `<div :if="…">` for conditionals and `<x-template :foreach="…">`
   (a Tempest component, not the HTML tag) for loops.
+- **A bearer-token JSON API controller needs `#[Stateless]`.** Without
+  it, Tempest sets a session cookie on *every* response and its
+  `PreventCrossSiteRequestsMiddleware` 403s any request that doesn't
+  carry a same-origin `Sec-Fetch-Site` header — both wrong for a
+  `deck_id`-style bearer API with no login/session (this repo's own
+  auth model, `specs/api.md`), and the CSRF check specifically breaks
+  a legitimate cross-origin call from a decoupled `frontend/` origin.
+  `#[Stateless]` on the controller class disables both, plus
+  `ManageSessionMiddleware`/`SetCookieHeadersMiddleware`
+  (`Tempest\Router\Stateless`'s own source). PHPUnit's
+  `IntegrationTest` doesn't catch a missing `#[Stateless]` — it never
+  inspects `Set-Cookie` or sends real `Sec-Fetch-*` headers; only a
+  live smoke test (`php -S` + a real HTTP client) surfaces it.
+- **4xx/5xx responses render as a full HTML debug page in
+  `ENVIRONMENT=local`, unless the client sends
+  `Accept: application/json`.** Every non-2xx `Response` gets rethrown
+  as `HttpRequestFailed` (`HandleRouteExceptionMiddleware`) and, in
+  `local` env without a JSON `Accept` header (e.g. plain `httpie`),
+  rendered as a Tailwind debug page instead of the controller's real
+  JSON body — looks exactly like the controller is broken. It isn't:
+  content negotiation working as designed. Always pass
+  `Accept: application/json` when smoke-testing an endpoint by hand.
 
 ## View / Request / Bindable — the object shapes Tempest expects
 
@@ -45,6 +67,37 @@ Hexagon still wins in `Domain/`/`Application/`.
   `resolve(): ?static` — returning `null` becomes an HTTP 404
   automatically, instead of a manual "not found" check in the
   controller.
+
+## Writing Tempest code that also satisfies Mago
+
+`mago.toml`'s `[analyzer]` runs on `api/src` + `api/tests`
+(`mago.toml`'s `[source]`) — real analyzer diagnostics, not just style.
+Two patterns worth knowing before the first attempt:
+
+- **Reading raw `Request` data:** `Request->get()` is `mixed`. Assigning
+  it to a variable trips `mixed-assignment` even one line before an
+  `is_string()`/`is_int()` guard — flow narrowing doesn't reach back to
+  the assignment. Don't "fix" it with an `@var string $x` cast: mago
+  then treats the variable as *proven* `string`, and flags the real
+  validation right after it as `redundant-type-comparison`. Instead,
+  leave the assignment genuinely `mixed`, keep the real `is_*` guard,
+  and suppress only the assignment line: `// @mago-expect
+  analysis:mixed-assignment`. (`analysis:` is the analyzer-issue prefix
+  — the same `@mago-expect` comment Tempest's own source uses for
+  `lint:*` codes works for analyzer codes too, confirmed empirically;
+  `bin/mago analyze --list-codes` lists every valid code.) See
+  `api/src/Infrastructure/Http/QuestionFeedbackController.php`.
+- **`*.config.php` discovery files need an explicit namespace.**
+  `mago.toml`'s `[guard.perimeter]` only permits a Tempest dependency
+  from a namespace it recognizes (`Paarfragen\Infrastructure\`,
+  `Paarfragen\Tests\`, …); a config file with no `namespace` statement
+  at all (Tempest's own docs never show one) reads as the global
+  namespace to the guard, which no `permit` rule covers, so any
+  `use Tempest\...` in it gets flagged as an illegal dependency. Give
+  it a namespace matching where it lives (e.g. `namespace
+  Paarfragen\Tests;` for `api/tests/database.testing.config.php`) —
+  Tempest's own discovery doesn't care about the namespace, only the
+  file suffix and the returned object's type.
 
 ## When you need real API detail
 
