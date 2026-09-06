@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Description: Read-only session/git facts for the housekeeping skill (branch, upstream, ahead/behind, dirty-tree counts, worktrees) plus a pre-graded FINDINGS section, so a session reports instead of re-deriving the same git commands by hand each time.
+# Side-effects: none (read-only).
+#
+# Plain text, not the {status, violations, ...} check contract — this is a
+# reporter, not a pass/fail gate. Deliberately not named check-repo-hygiene:
+# script/check globs script/check-* into script/qa's hard gate, and a
+# stale local branch or an unpushed commit is a session-hygiene note, not a
+# reason to fail the build.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+upstream=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || echo none)
+
+ahead=0
+behind=0
+if [[ "$upstream" != none ]]; then
+    read -r behind ahead < <(git rev-list --left-right --count "$upstream...HEAD")
+fi
+
+last_commit=$(git log -1 --format='%h %s (%cr)' 2>/dev/null || echo none)
+
+staged=$(git diff --cached --name-only | grep -c . || true)
+modified=$(git diff --name-only | grep -c . || true)
+untracked_files=$(git ls-files --others --exclude-standard)
+untracked=0
+[[ -n "$untracked_files" ]] && untracked=$(grep -c . <<<"$untracked_files")
+
+findings=()
+if (( staged + modified + untracked > 0 )); then
+    findings+=("🟡 dirty-tree — staged=$staged modified=$modified untracked=$untracked")
+fi
+if [[ "$upstream" != none && "$ahead" -gt 0 ]]; then
+    findings+=("🟡 unpushed-commits — $ahead commit(s) ahead of $upstream")
+fi
+while read -r other; do
+    [[ -z "$other" || "$other" == "$branch" ]] && continue
+    if git merge-base --is-ancestor "$other" main 2>/dev/null; then
+        findings+=("🟡 stale-merged-branch — '$other' is fully merged into main, safe to delete")
+    fi
+done < <(git for-each-ref refs/heads --format='%(refname:short)')
+
+cat <<EOF
+BRANCH: $branch
+UPSTREAM: $upstream
+AHEAD: $ahead
+BEHIND: $behind
+LAST_COMMIT: $last_commit
+STAGED: $staged
+MODIFIED: $modified
+UNTRACKED: $untracked
+UNTRACKED_FILES:
+$untracked_files
+WORKTREES:
+$(git worktree list)
+
+FINDINGS:
+EOF
+if (( ${#findings[@]} == 0 )); then
+    echo none
+else
+    printf '%s\n' "${findings[@]}"
+fi

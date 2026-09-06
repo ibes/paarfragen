@@ -225,32 +225,3 @@ that's the first real use case — Reka UI's Dialog primitive handles
 focus-trap/Escape/`aria-modal` correctly where a hand-rolled one is
 easy to get wrong.
 
-## `script/check-repo-hygiene` to back the `/housekeeping` skill
-
-Live friction, not just a someday idea — see `FRICTION.md`'s matching
-entry, which stays open until this is actually built.
-
-**What:** A read-only script the `housekeeping` skill runs instead of
-an agent re-deriving the same handful of `git` commands from scratch
-each time: current branch, upstream + ahead/behind counts, last
-commit, staged/modified/untracked files, worktree list — plus judgment
-already applied to raw facts as a pre-graded `FINDINGS:` section
-(`none`, or a flagged item like "local branch X is fully merged into
-main, safe to delete").
-**Why it might matter:** `/housekeeping` has now been run twice this
-session and manually re-derived the exact same `git status`/`git
-branch -vv`/`git merge-base --is-ancestor` sequence both times, by
-hand, from the skill's own prose instructions rather than a script —
-work a fresh session would repeat identically a third time, with the
-skill itself already written to prefer exactly this script if it
-existed (its own instructions say "session facts *and* their severity
-come from `script/check-repo-hygiene` in one pass").
-**Rough shape:** a plain-text or JSON report (matching whatever format
-is easiest for the `housekeeping` skill's own report template to
-consume) — no need to speak the `{status, violations, ...}` contract,
-since this isn't a pass/fail gate, just a reporter.
-**Not now because:** cheap enough to keep doing by hand for now, and
-worth shaping the script's exact output around a few more real
-`/housekeeping` runs first rather than guessing the right level of
-"pre-graded judgment" (e.g. exactly which branch-staleness heuristics
-are worth automating vs. still asking about) from only two runs.

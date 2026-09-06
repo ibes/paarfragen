@@ -713,3 +713,36 @@ as "drop everything" or, more likely in practice, as no priority at
 all. Naming it explicitly as high-but-not-highest gives a session
 something concrete to weigh a stumbled-over friction fix against the
 task at hand, instead of either extreme.
+
+## 2026-09-06 — Built `script/repo-hygiene` + paarfragen's own `housekeeping` skill
+
+Closed the `FRICTION.md` entry from earlier today by actually building
+the fix, per the value just recorded (a recurring friction is the
+signal to build, not to describe better): `script/repo-hygiene` reports
+branch/upstream/ahead-behind, dirty-tree counts, worktrees, and a
+pre-graded `FINDINGS:` section (dirty-tree, unpushed-commits,
+stale-merged-branch — the last one already caught a real stale local
+branch, `claude/docker-api-build-test-r5bjv0`, merged into `main` and
+safe to delete).
+
+**Naming, deliberately not `check-repo-hygiene`:** `script/check` globs
+`script/check-*` into `script/qa`'s hard pass/fail gate. A stale branch
+or an unpushed commit is a session-hygiene note, not a reason to fail
+the build — naming it `check-*` would have silently pulled a reporter
+into the hard gate the first time `script/qa` ran. Named it
+`script/repo-hygiene` instead; documented the reasoning inline so it
+doesn't get "corrected" back to `check-*` by a future session matching
+the `/housekeeping` skill's own wording.
+
+**Bigger finding along the way:** paarfragen had no `housekeeping`
+skill of its own at all — every earlier `/housekeeping` run in this
+repo was actually resolving redlich's or emsig's `.claude/skills/
+housekeeping`, found on disk as sibling directories, not anything this
+repo defines. That's a live gap against the earlier self-containment
+work ("paarfragen shouldn't need redlich/emsig visible") — it was
+reference-clean in its own files but still runtime-dependent on those
+repos existing beside it. Fixed by adding this repo's own
+`.claude/skills/housekeeping/SKILL.md`, adapted from redlich's (dropped
+the `/kaizen` cross-reference and `script/worktree rm` — paarfragen has
+neither a kaizen skill nor a worktree script; plain `git worktree
+remove` instead).
