@@ -73,18 +73,22 @@ the human directly.
 
 ## Next step
 
-No locked slice spec yet, and no `spec` skill exists in this repo (no
-`agent/`/vault pipeline like the sibling repos this was scaffolded
-from once had) — write one directly as a `specs/*.md` file, following
-`specs/api.md`'s shape. Before writing any Domain/Application/
-Infrastructure *implementation*, talk to the human about scope first —
-don't assume the vision doc above is ready to build as-is.
+**Slice 2 spec locked:**
+[`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md)
+— grilled with the human first (`grill-me`), self-contained, one
+reasoning line per decision. Scope: `GET /questions` +
+`POST /question-feedback` as a real, persisted `api/` implementation
+(SQLite), everything else in `specs/api.md` deferred.
 
-[`specs/api.md`](api.md) already drafts the request/response contract
-for the first slice's five endpoints, so `api/` and `frontend/` can be
-built against a shared interface once that spec exists, without one
-side waiting on the other. It's a draft, not locked — keep updating it
-as either side hits a gap.
+Next: build it. `src/Domain`, `src/Application`, `src/Infrastructure`
+are all still empty (`.gitkeep` only) — this is the first real
+Domain/Application/Infrastructure code in the repo. Follow the slice
+spec and `api/README.md`'s layering. Done when `script/qa` is green
+end-to-end for both endpoints, per `CLAUDE.md`.
+
+There is still no `spec` skill in this repo (no `agent/`/vault
+pipeline like the sibling repos this was scaffolded from once had) —
+slice specs are written directly as `specs/*.md` files.
 
 ## Decided
 
@@ -102,21 +106,33 @@ as either side hits a gap.
 - **Repo content is English** (docs, code, comments, commits) —
   `CLAUDE.md`. The product's own end-user UI language is a separate,
   still-open decision — see below.
+- **Slice 2 scope: `GET /questions` + `POST /question-feedback` only** —
+  real `api/` implementation, everything else in `specs/api.md`
+  (`GET /question-feedback`, `POST /generate-question`,
+  `POST /app-feedback`) deferred to a later slice. Grilled and locked
+  in `specs/2026-09-06-slice-2-questions-feedback-persistence.md`.
+- **Auth model confirmed:** `deck_id` bearer, format-validated as a
+  UUID (400 if malformed), never looked up against a table — there is
+  no `decks` table. `GET /questions` is global data and needs no
+  `deck_id` at all. `specs/api.md`.
+- **Data storage: SQLite file**, no separate DB service in
+  `docker-compose.yml`. Seed questions ship embedded in a DB migration
+  (`source: {"type":"seed"}`), not a separate seed script.
+- **Server-generated IDs (`questions.id`) are UUIDv7.** Client-generated
+  IDs (`question_feedback.id`, `app_feedback.id`) stay the frontend's
+  own choice. `specs/api.md`.
+- **Deploy target's PHP version: `^8.5`, confirmed** — matches
+  `api/composer.json`'s existing requirement; no longer open.
 
 ## Open decisions (not yet made — ask before assuming)
 
 - **Where `generate:typescript-types` (Tempest → TS type generation,
   `specs/api.md`) writes its output** — deferred until real
   Infrastructure DTOs exist to generate from.
-- **Auth model** for two people sharing a question deck. `specs/exploration-mode.md`
-  proposes a hardcoded, opaque `deck_id` bearer token (no login) for
-  its exploration stage — not yet confirmed for this repo.
-- **Data storage** — nothing wired yet. `specs/exploration-mode.md`
-  sketches `questions` / `question_feedback` / `app_feedback` tables;
-  needs a spec before becoming schema.
-- **Deploy target's actual PHP version** — assumed ^8.5 (PHP 8.5 is
-  confirmed to run this exact stack, Tempest `^3.0`, successfully in a
-  real deployment elsewhere), not confirmed for this repo's own target.
+- **`GET /question-feedback`, `POST /generate-question`,
+  `POST /app-feedback`** — not in Slice 2's scope; exact 4xx codes,
+  success status, and idempotency shape for these three still need
+  deciding when a later slice actually builds them.
 - **End-user UI language** — repo content is English by house rule,
   but the product's name and its original design input are German; a
   German-language UI is plausible but not decided. Current placeholder

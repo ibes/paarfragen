@@ -29,3 +29,15 @@ is actually fixed: remove the entry, and log the real decision in
 
 ---
 
+## 2026-09-06 — Task prompt referenced files that don't exist in the repo
+
+The session's task prompt named `frontend/src/api/mockApi.ts`, a
+`.claude/skills/spec/` skill, and `specs/2026-09-06-slice-1-question-loop.md`
+as an example spec — none exist; `frontend/src/` has no `api/` dir at
+all, and `.claude/skills/` only has `friction`/`grill-me`/`housekeeping`/
+`setup-log`. `specs/STATUS.md` already stated the real situation
+correctly (no spec skill, no product code yet, greenfield). Reading
+`STATUS.md` first per the `CLAUDE.md` load path caught the mismatch
+before anything was built against the wrong assumption. Would help:
+whatever generates/relays these task prompts staying in sync with
+`STATUS.md`, since the router already had the right answer.

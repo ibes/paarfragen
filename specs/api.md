@@ -17,11 +17,18 @@ shape, below), it's called out explicitly as this repo's own decision.
   No path prefix / version segment yet — single evolving contract while
   in exploration mode.
 - `Content-Type: application/json` for every request body and response.
-- **Auth:** every request (except none — even reads) carries `deck_id`,
-  a client-held opaque UUID. No login, no session, no other identity.
-  Anyone holding a `deck_id` has full read/write on that deck's data.
-  `GET` endpoints take it as a query param; `POST` endpoints take it in
-  the JSON body.
+- **Auth:** every request that reads or writes *deck-scoped* data
+  carries `deck_id`, a client-held opaque UUID. No login, no session,
+  no other identity. Anyone holding a `deck_id` has full read/write on
+  that deck's data. `GET` endpoints take it as a query param; `POST`
+  endpoints take it in the JSON body. `deck_id` is validated for UUID
+  format only — 400 if malformed — never looked up against a table
+  (there is no `decks` table; any well-formed UUID is accepted).
+  **Exception:** `GET /questions` returns global data, not deck-scoped,
+  and takes no `deck_id` at all — decided in
+  `specs/2026-09-06-slice-2-questions-feedback-persistence.md` after
+  this convention text and the endpoint's own "Query: none" turned out
+  to contradict each other.
 - **Error shape** (this repo's own decision — not in the source vision
   doc, needs confirming once real errors happen):
   ```json
@@ -29,8 +36,12 @@ shape, below), it's called out explicitly as this repo's own decision.
   ```
   Paired with a 4xx/5xx status. No error code enum yet — add one if/when
   the frontend needs to branch on error type, not preemptively.
-- IDs are UUIDs (v4 or v7, undecided — pick one when the persistence
-  layer is built, not before). Client-generated where noted below.
+- IDs are UUIDs. Server-generated IDs (`questions.id`) are **UUIDv7** —
+  decided in `specs/2026-09-06-slice-2-questions-feedback-persistence.md`
+  for its DB-index locality/sortability, no longer open. IDs generated
+  client-side (`question_feedback.id`, `app_feedback.id`, noted below)
+  are the frontend's own choice — this contract only requires
+  uniqueness, not a specific UUID version.
 
 ## Endpoints
 
@@ -39,7 +50,8 @@ shape, below), it's called out explicitly as this repo's own decision.
 Returns every known question. No pagination yet (dataset is small in
 exploration mode).
 
-**Query:** none.
+**Query:** none — no `deck_id`. `questions` is global data, not
+deck-scoped; see the Auth convention above.
 
 **200:**
 ```json
@@ -107,9 +119,16 @@ never overwrites a prior rating for the same question.
 ```
 `id` is generated **client-side** specifically so retries after a
 dropped connection are safe: same `id` submitted twice writes the same
-row once.
+row once — the second call is silently accepted (same success
+response), not compared against the first payload field-by-field, and
+not rejected. `id` is the row's only uniqueness constraint.
 
-**200:** empty body (or `{}` — undecided, pick when building).
+**201:** empty body (or `{}` — undecided, pick when building). Decided
+in `specs/2026-09-06-slice-2-questions-feedback-persistence.md`.
+
+**404:** unknown `question_id` (no matching row in `questions`) —
+error shape as above. `deck_id` is never looked up (see Auth
+convention), only format-validated (400 if malformed).
 
 ### `POST /app-feedback`
 
@@ -159,10 +178,14 @@ until real DTOs exist and get built against a spec:
 
 ## Open items for whoever builds against this next
 
-- Exact 4xx status codes per failure case (missing `deck_id`, unknown
-  `question_id`, empty `free_text` when required, etc.) — not decided,
-  decide when writing the first Infrastructure controller/test.
-- `200` vs `201`/`204` on the two write-only endpoints above.
+- `GET /question-feedback`, `POST /generate-question`,
+  `POST /app-feedback` — not built in
+  `specs/2026-09-06-slice-2-questions-feedback-persistence.md` (only
+  `GET /questions` + `POST /question-feedback` are). Exact 4xx codes,
+  `200`/`201`/`204` choice, and idempotency shape for these three still
+  need deciding when a slice actually implements them — the pattern
+  set for `POST /question-feedback` (above) is a reasonable default to
+  start from, not a guarantee it fits unchanged.
 - Rate limiting / abuse handling on `POST /generate-question` (an LLM
   call an anonymous `deck_id` can trigger freely) — out of scope for
   exploration mode per `specs/exploration-mode.md`, but worth a line
