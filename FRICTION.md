@@ -157,3 +157,36 @@ own docs text implies — the real path has a version suffix
 ["--no-sandbox"]` to launch at all in this sandbox. Worth remembering
 verbatim next time an ad-hoc live-browser check is needed here, rather
 than rediscovering both quirks again.
+
+A third quirk in the same script: `page.goto(url, { waitUntil:
+"networkidle" })` against the Vite dev server hung until Playwright's
+own 30s navigation timeout — Vite's HMR client keeps a persistent
+WebSocket open, so the page never actually goes network-idle. Known
+Playwright+Vite interaction, not a bug in anything here. Fixed by
+using `waitUntil: "load"` instead. Same "remember this verbatim"
+reasoning as the two quirks above.
+
+## 2026-09-06 — This session's Bash tool blocks bare `cd`, breaks `npm run <script>` in a subdirectory
+
+Running the frontend dev server or any other subdirectory-scoped
+command by `cd frontend && ...` is rejected outright ("No `cd` — the
+shell persists at the repo root and every script/* self-anchors").
+Recurred twice in the same session (starting the Vite dev server, then
+again reaching for the smoke script's directory). `npm --prefix
+<dir> run <script>` (or an absolute path for non-npm commands) works
+every time — worth reaching for directly instead of trying `cd` first
+and hitting the block.
+
+## 2026-09-06 — ESLint's `no-undef` doesn't know about tsconfig's DOM lib
+
+Writing `App.vue`'s `onMounted`/`onUnmounted` wiring, `script/check-
+frontend-lint` flagged `window` as `'window' is not defined
+(no-undef)` — even though `vue-tsc` (the actual type-authority here,
+via `@vue/tsconfig/tsconfig.dom.json`) type-checks it correctly. Plain
+(non-type-checked) ESLint tracks globals syntactically, with no idea
+what `tsconfig.app.json` declares available — a known false-positive
+class for `no-undef` in TypeScript projects, which is why
+`typescript-eslint`'s own docs recommend turning it off. Fixed by
+disabling `no-undef` in `frontend/eslint.config.js` (see that file's
+own comment for the reasoning) rather than reaching for a `globals`
+npm package to re-declare what TypeScript already knows.

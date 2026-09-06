@@ -97,10 +97,39 @@ has.
 **Rough shape:** JSON output, straightforward to fold into the
 existing `{status, violations, total, summary}` contract as
 `script/check-frontend-boundary`.
-**Not now because:** `frontend/src/` is currently just
-`App.vue`/`main.ts`/`style.css` — no layers exist to draw a boundary
-between yet. Defining rules now would be guessing at a structure that
-doesn't exist.
+**Not now because:** `frontend/src/` now has real structure since
+Slice 3 (`api/`, `composables/`, `deck/`), but it's still three small,
+already-obviously-separated modules with no accidental cross-imports
+observed yet — enforcing a boundary now would still be guessing ahead
+of an actual violation. Revisit once `frontend/src/` is big enough
+that "just don't do that" stops being a reliable convention on its
+own.
+
+## `frontend/reference/` — a Vue/Vite/tooling gotchas doc, mirroring `api/reference/`
+
+**What:** A `frontend/reference/` doc (or a `frontend/reference/
+vue.md`) for framework/tooling behavior that's surprising and worth
+not rediscovering — the same role `api/reference/tempest.md`'s
+"Framework gotchas" section plays for `api/`.
+**Why it might matter:** Slice 3 already hit two: ESLint's `no-undef`
+not knowing about tsconfig's DOM lib (false-positives `window` as
+undefined — `FRICTION.md`), and Playwright's `waitUntil: "networkidle"`
+hanging against Vite's dev server because its HMR client keeps a
+WebSocket open (`FRICTION.md`). Both are currently only in
+`FRICTION.md` (a dated log) plus one inline `eslint.config.js`
+comment — nowhere a future session would look *before* writing
+frontend code, the way `api/reference/tempest.md` is read up front for
+`api/` work.
+**Rough shape:** Same shape as `api/reference/tempest.md`'s "Framework
+gotchas" section — short, dated-free bullets, referenced from
+`frontend/README.md`'s "Toolchain" section the way `api/README.md`
+points at `api/reference/`.
+**Not now because:** two gotchas isn't yet a pattern that justifies a
+whole new doc + a `frontend/README.md` cross-reference to maintain —
+the existing `FRICTION.md` entries plus the `eslint.config.js` comment
+already cover them adequately. Build this once a third or fourth
+frontend-specific gotcha lands, the same threshold `api/reference/
+tempest.md` itself crossed organically.
 
 ## A named spec template shape
 
