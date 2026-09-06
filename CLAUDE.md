@@ -29,6 +29,11 @@ cross-platform shell without touching the API.
 - **Setup decisions:** when you make one (a script, a convention, a
   library choice), record it with the `setup-log` skill so
   `SETUP-LOG.md` explains *why*, not just *what*.
+- **Friction or a good-but-premature idea:** don't just let it
+  evaporate. Something annoying/surprising just now → one line in
+  `FRICTION.md`. A real tool/pattern that solves a problem this repo
+  doesn't have yet → an entry in `IDEAS.md`. Neither blocks anything;
+  both exist so nobody re-derives the same thing later.
 
 ## Load path
 

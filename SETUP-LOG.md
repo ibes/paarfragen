@@ -645,3 +645,37 @@ particular was a real information-loss risk, not just a style cleanup —
 `redlich`'s vision doc had significant product detail this repo had
 never actually captured, only linked to. Read it in full and restated
 it before removing the link, rather than after.
+
+## 2026-09-05 — FRICTION.md + IDEAS.md: a self-improvement loop lighter than harvest/kaizen
+
+Two new root-level files, both append-only, no tooling behind either:
+`FRICTION.md` for raw, in-the-moment notes (something annoying/
+surprising, not worth stopping for), `IDEAS.md` for considered "good
+idea, not needed yet" entries with enough context to act on later
+without re-deriving it. `CLAUDE.md` points at both. Seeded `IDEAS.md`
+with six items worth remembering but deliberately not built this
+session: a CI workflow, a test-conventions doc (TDD order + no
+cosmetic assertions), `dependency-cruiser` for frontend boundaries, a
+named spec-template shape, Mago structural rules for a
+not-yet-chosen Infrastructure DTO convention, and revisiting Mago's
+size-rule thresholds / typescript-eslint's type-checked linting once
+real code exists to judge either against.
+
+**Why:** this repo has no self-improvement mechanism at all —
+`SETUP-LOG.md` only records decisions already made and acted on, with
+nowhere for "noticed, not deciding yet" to live in between. Designed
+together with the human rather than built unilaterally, explicitly as
+a lighter version of what `SETUP-LOG.md`'s own past entries described
+(now removed) as two known, heavier mechanisms elsewhere: one an
+append-only JSONL ledger with dedup and a scheduled review cadence,
+the other a periodic review skill coupled to a slice/phase system.
+Neither fits a repo with zero product code and no build cadence yet.
+Deliberately no review skill either, for the same reason — one is
+worth building once these files are long enough that scanning them by
+hand stops working, not before.
+
+Also the concrete answer to "how do proven insights from elsewhere
+survive losing access to where they were found": write them down now,
+in this repo's own words, before the access is gone — same principle
+`specs/exploration-mode.md` (previous entry) already applied to the
+product vision.
