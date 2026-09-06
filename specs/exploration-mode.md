@@ -113,9 +113,14 @@ several, for different relationships). Anyone holding it has full
 read/write access to that deck's history — a bearer credential,
 acceptable since no personal data is stored.
 
-For exploration mode: `deck_id` is hardcoded into the app's local
-config, not generated or entered by a user. A human-readable recovery/
-sharing code is a good later addition, not needed now.
+**Correction from Slice 3's grill** (`specs/2026-09-06-slice-3-frontend-api-wiring.md`):
+a single value hardcoded into the app's own config, shared by every
+install, would mean every couple using the app writes into the same
+deck — not what "a shared session" between two people means. Instead:
+`deck_id` is generated client-side on first run and persisted to
+`localStorage`; not entered by a user, not shared across installs. A
+human-readable recovery/sharing code is a good later addition, not
+needed now.
 
 ## API
 
@@ -140,7 +145,8 @@ Offline-first. No realtime sync.
 
 ## Frontend: local storage
 
-- `deck_id` — hardcoded.
+- `deck_id` — generated on first run, then persisted (see "Identity"
+  above; corrected from "hardcoded" during Slice 3's grill).
 - `questions` — local cache of `{id, text}`.
 - `rated_question_ids` — set of already-rated question ids, updated
   instantly on submission (before server confirmation).

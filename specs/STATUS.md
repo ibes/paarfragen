@@ -60,15 +60,16 @@ trusted.
 
 ## Phase
 
-**Slice 2 built.** `api/src/` now has its first real
+**Slice 2 built, Slice 3 spec locked.** `api/src/` has its first real
 Domain/Application/Infrastructure code: `GET /questions` and
 `POST /question-feedback`, backed by SQLite, per
 [`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
 `script/qa` is green end-to-end, including 9 PHPUnit tests (2
 Application unit + 7 Infrastructure integration) and a manual live
 smoke test against a real `php -S` server. `frontend/` is still the
-scaffold only — nothing there calls the real API yet, it's all still
-ahead.
+scaffold only — nothing there calls the real API yet — but Slice 3's
+spec (wiring the core loop against it) is now locked; building it is
+next.
 
 A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
@@ -79,20 +80,19 @@ the human directly.
 
 ## Next step
 
-**Decided: wire `frontend/` against the real API next** (Slice 3),
-over extending `api/`'s own scope further — per `VALUES.md` § Product
-over system, and the human's explicit call. Branch:
+**Slice 3 spec locked:**
+[`specs/2026-09-06-slice-3-frontend-api-wiring.md`](2026-09-06-slice-3-frontend-api-wiring.md)
+— grilled with the human first (`grill-me`), self-contained, one
+reasoning line per decision. Scope: the core question/rating loop in
+`frontend/`, wired against Slice 2's real `GET /questions` +
+`POST /question-feedback`, with a client-generated `deck_id` and an
+offline-tolerant local queue for rating submissions. Branch:
 `claude/ibes-paarfragen-frontend-api-wiring`.
 
-Scope not yet grilled. `frontend/src/` is still the Vite scaffold only
-(`App.vue`/`main.ts`/`style.css`) — no API client, no question/rating
-UI, nothing calling `GET /questions` / `POST /question-feedback` yet.
-Grill scope/state-management/offline-behavior before locking a slice
-spec, same process as
-[`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
-`specs/exploration-mode.md` § "Frontend: screen layout" and
-§ "Sync and offline behavior" are the design input to restate from,
-not a scope-and-Done commitment as-is.
+Next: build it. `frontend/src/` is still the Vite scaffold only
+(`App.vue`/`main.ts`/`style.css`) — this is the first real frontend
+code. Follow the slice spec. Done when `script/qa` is green
+end-to-end, per `CLAUDE.md`.
 
 `api/`'s remaining scope (`GET /question-feedback`,
 `POST /generate-question`, `POST /app-feedback`) stays deferred — see
@@ -131,6 +131,17 @@ not a scope-and-Done commitment as-is.
   own choice. `specs/api.md`.
 - **Deploy target's PHP version: `^8.5`, confirmed** — matches
   `api/composer.json`'s existing requirement; no longer open.
+- **Slice 3 scope: the core question/rating loop only** — no
+  "new topic" input, no app-feedback entry point (their endpoints
+  don't exist yet). `deck_id` is generated client-side on first run
+  and persisted to `localStorage`, not hardcoded — corrects
+  `specs/exploration-mode.md`'s original design (a single hardcoded
+  value would mean every install shares one deck). Rating submissions
+  queue locally and flush on a threshold/online-event/app-start, never
+  POST instantly. Plain Vue composable for state, native `fetch()`, no
+  Pinia/HTTP library. Real PWA app-shell offline (icons,
+  service-worker precaching) deferred. Grilled and locked in
+  `specs/2026-09-06-slice-3-frontend-api-wiring.md`.
 
 ## Open decisions (not yet made — ask before assuming)
 
