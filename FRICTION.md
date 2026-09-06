@@ -139,3 +139,21 @@ Fixed with `api/src/Infrastructure/Http/CorsMiddleware.php` — see that
 file's own docblock for a second gotcha found getting it right
 (middleware priority vs. `MatchRouteMiddleware`, also added to
 `api/reference/tempest.md`).
+
+## 2026-09-06 — Ad-hoc Playwright smoke script needed manual path-hunting
+
+Writing a throwaway `.mjs` script (scratchpad, not in the repo) to
+drive the live browser smoke test above: `import { chromium } from
+"playwright"` fails under plain `node` even with `NODE_PATH` set to
+the global `node_modules` — Node's ESM resolver doesn't consult
+`NODE_PATH` the way CommonJS `require` does. Had to import the global
+package's `index.mjs` by its absolute path instead
+(`/opt/node22/lib/node_modules/playwright/index.mjs`). Then
+`chromium.launch()` failed again: the executable isn't at
+`/opt/pw-browsers/chromium/chrome-linux/chrome` as the environment's
+own docs text implies — the real path has a version suffix
+(`/opt/pw-browsers/chromium-1194/chrome-linux/chrome`, found via `find
+/opt/pw-browsers -iname '*chrome*'`), and needed `args:
+["--no-sandbox"]` to launch at all in this sandbox. Worth remembering
+verbatim next time an ad-hoc live-browser check is needed here, rather
+than rediscovering both quirks again.
