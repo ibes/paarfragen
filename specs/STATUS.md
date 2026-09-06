@@ -60,7 +60,7 @@ trusted.
 
 ## Phase
 
-**Slices 2, 3, and 4 all built.** `api/src/` has its first real
+**Slices 2 through 5 all built.** `api/src/` has its first real
 Domain/Application/Infrastructure code: `GET /questions` and
 `POST /question-feedback`, backed by SQLite, per
 [`specs/2026-09-06-slice-2-questions-feedback-persistence.md`](2026-09-06-slice-2-questions-feedback-persistence.md).
@@ -104,6 +104,22 @@ null` default to be excluded from an `INSERT` (a defaulted nullable
 property still sends an explicit `NULL`, which broke `created_at`'s
 `NOT NULL` constraint).
 
+**Slice 5 (Real PWA app-shell offline) is now built and verified**,
+per [`specs/2026-09-06-slice-5-pwa-offline.md`](2026-09-06-slice-5-pwa-offline.md):
+real placeholder icons (192×192/512×512 + a 180×180
+`apple-touch-icon`), iOS home-screen meta tags, and an active
+`visibilitychange`-triggered service-worker update check on every app
+open (not just the browser's own throttled default) — driven by an
+imminent real deployment where staying current matters during active
+testing. `script/qa` green; live-verified via Playwright against the
+real production build (`npm run build` + `npm run preview` — the PWA
+service worker only precaches real built assets, not `vite`'s dev
+server): the app shell (heading, feedback button) still renders after
+a real offline reload. One test-only gotcha found along the way, in
+`FRICTION.md`: a service worker's `active`/controlling state doesn't
+mean Workbox's precache has actually finished populating Cache
+Storage — wait on the cache contents directly, not registration state.
+
 A pre-spec design input exists — [`specs/exploration-mode.md`](exploration-mode.md):
 a single shared-device question deck, rating loop, `deck_id` bearer
 identity, no accounts. It's a design input, not a spec: restate what's
@@ -113,11 +129,14 @@ the human directly.
 
 ## Next step
 
-No locked next slice. After Slice 4, still not decided between:
+No locked next slice. A real deployment is imminent (the human's own
+words, 2026-09-06) — no ops facts (host, domain) assumed here per
+`CLAUDE.md`; expect this to reopen `POST /app-feedback`'s deferred rate
+limiting and `/mcp`'s deferred IP/domain restriction once a real
+target exists (`specs/2026-09-06-slice-4-app-feedback.md`).
 
-- **Real PWA app-shell offline** — icons, service-worker precaching,
-  installability. Slice 3 deliberately deferred this (its own spec's
-  "explicitly out of scope").
+After Slice 5, still not decided between:
+
 - **Extend `api/`'s scope further** — `GET /question-feedback`,
   `POST /generate-question` (needs an LLM-provider decision first).
 - **What replaces the end-state message** once every cached question
@@ -205,6 +224,15 @@ reasoning as before Slice 3/4, `VALUES.md` § Product over system.
   reliably implementable (no stable published IP range for MCP client
   traffic). Grilled and locked in
   `specs/2026-09-06-slice-4-app-feedback.md`.
+- **Slice 5 scope: real app-shell offline, placeholder icons, active
+  update checks** — 192×192/512×512 + `apple-touch-icon` (180×180)
+  generated placeholders (a heart emoji, not final branding), no
+  maskable variant, `registerType: "autoUpdate"` stays (silent, no
+  reload prompt) but a `visibilitychange`-triggered
+  `registration.update()` forces a check on every app open, not just
+  the browser's own throttled default — an imminent real deployment
+  makes staying current during active testing matter now. Grilled and
+  locked in `specs/2026-09-06-slice-5-pwa-offline.md`.
 
 ## Open decisions (not yet made — ask before assuming)
 
@@ -221,6 +249,15 @@ reasoning as before Slice 3/4, `VALUES.md` § Product over system.
 - **IP/domain-level restriction on the `/mcp` triage route** — deferred
   until a real deployment target exists (no stable IP range to
   restrict to before then). `specs/2026-09-06-slice-4-app-feedback.md`.
+- **Real branding icon + maskable icon variant** — the current
+  `frontend/public/icon-*.png` are a generated placeholder, deferred
+  in `specs/2026-09-06-slice-5-pwa-offline.md`. Also whether the
+  "check for updates on every app open" emphasis should relax once the
+  active test/deployment phase settles.
+- **Deployment target** — hosting, domain, HTTPS: genuinely not known
+  yet as of this writing; the human said a deployment is imminent
+  (2026-09-06) but named no specifics — nothing to record here until
+  it happens, per `CLAUDE.md`'s "no invented ops facts."
 - **End-user UI language** — repo content is English by house rule,
   but the product's name and its original design input are German; a
   German-language UI is plausible but not decided. Current placeholder
@@ -277,8 +314,9 @@ repeated here on purpose.
   earlier dev sandbox's proxy during a `composer update` run (before
   the Docker approach existed) — composer fell back to cloning from
   git source successfully; may not recur elsewhere.
-- `frontend/vite.config.ts` ships `vite-plugin-pwa` with an empty
-  `icons: []` — no real app icons exist yet (see the TODO next to it).
-  Add 192×192 and 512×512 PNGs before treating the PWA as installable.
+- `frontend/public/icon-*.png`/`apple-touch-icon.png` are a generated
+  placeholder (a heart emoji on a solid background,
+  `specs/2026-09-06-slice-5-pwa-offline.md`), not final branding —
+  swap them for real design assets whenever that work happens.
 - `api/tests/*` and `api/src/*` subdirectories are empty (`.gitkeep`
   only) — first real code should come from a spec, not ad-hoc.

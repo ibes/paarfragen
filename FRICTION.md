@@ -110,3 +110,23 @@ the "exited" process was actually still serving). Would help: when
 using `run_in_background: true`, pass the plain foreground command
 (`script/dev-api`, no trailing `&`, no output redirection) and let the
 tool handle backgrounding itself — never combine the two.
+
+## 2026-09-06 — A service worker's `active`/`controller` state doesn't mean Workbox's precache install has finished
+
+Live-verifying Slice 5's PWA offline behavior via Playwright: waiting
+on `reg.active` truthy + `navigator.serviceWorker.controller !== null`
+before going offline and reloading wasn't sufficient — `caches.keys()`
+was still `[]` at that point, and the offline reload failed with
+`net::ERR_INTERNET_DISCONNECTED`. Workbox's precache-population step
+(writing every manifest entry into Cache Storage during `install`)
+hadn't actually finished, even though the registration already
+reported an active worker. Cost real debugging time chasing what
+looked like a broken `vite-plugin-pwa` config — the generated `sw.js`
+(`NavigationRoute` bound to `index.html`) was correct the whole time;
+only checking Cache Storage directly (`caches.keys()`, polled) showed
+the real state. Fixed by waiting on the precache actually being
+populated (poll until a cache exists and contains an `index.html`
+entry) instead of trusting registration/controller state as a proxy.
+Worth remembering next time a Playwright check needs "is this SW
+actually ready to serve offline" — check Cache Storage, not
+`reg.active`.

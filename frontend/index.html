@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>paarfragen</title>
+
+    <!--
+      iOS/Safari ignores the web manifest for "Add to Home Screen" —
+      these are the separate mechanism it actually reads.
+      specs/2026-09-06-slice-5-pwa-offline.md
+    -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="paarfragen" />
+    <meta name="theme-color" content="#d6336c" />
   </head>
   <body>
     <div id="app"></div>
