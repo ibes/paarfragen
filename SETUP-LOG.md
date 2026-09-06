@@ -873,3 +873,20 @@ sweep while here and found one more of the same shape:
 "using the `spec` skill" — a skill that, like `spec`/`kaizen`/
 `bug-report`, only exists in the sibling repos. Reworded it to say so
 directly rather than naming a skill this repo doesn't have.
+
+## 2026-09-06 — Third value: product over system
+
+Human self-flagged a tendency to build the system instead of the
+product, and asked for pushback against it going forward. Added as a
+third `VALUES.md` entry rather than only a one-off remark, since this
+session is itself the evidence: roughly ten commits today, all
+tooling/docs/skills, none touching `api/src/` (still empty `.gitkeep`
+placeholders) or locking a spec.
+
+**Why a value, not a script:** unlike the other two values, there's no
+clean mechanical check for "is this system work earning its keep" —
+it's a judgment call each time a next task is chosen, which is exactly
+what `VALUES.md` is for (guidance for situations `CLAUDE.md`'s rules
+don't cover). Deliberately did not build a tripwire script/counter for
+this — would be system work justified by a value about not doing too
+much system work.
