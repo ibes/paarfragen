@@ -890,3 +890,60 @@ what `VALUES.md` is for (guidance for situations `CLAUDE.md`'s rules
 don't cover). Deliberately did not build a tripwire script/counter for
 this — would be system work justified by a value about not doing too
 much system work.
+
+## 2026-09-06 — Slice 2: `script/tempest` added
+
+New script, `script/lib/api-php vendor/bin/tempest "$@"` — mirrors
+`script/check-composer`'s pattern to route Tempest console commands
+(`migrate:up`, `key:generate`, …) through the `api/` container.
+
+**Why:** `CLAUDE.md`'s scripts-first rule; `api/.env.example` already
+referenced this exact script name as "once that script exists," so
+first real `api/` code was the trigger to build it.
+
+## 2026-09-06 — Slice 2: DB config left at Tempest's default, dedicated testing DB added
+
+No `database.config.php` written — Tempest's zero-config default
+(`.tempest/database.sqlite` under `api/`) already matches the locked
+spec (SQLite file, no separate service), so an explicit config file
+would only restate the default. Added `api/tests/database.testing.config.php`
+(Tempest's own documented per-environment pattern) so tests never touch
+the dev DB, and added the `ENVIRONMENT=testing` `<php>` block to
+`phpunit.xml` — missing before, and required for that per-environment
+config file to actually be picked up. Both `api/.tempest/` and
+`api/tests/testing.sqlite` gitignored.
+
+**Why:** one less file to maintain when the default already says what
+we want (`VALUES.md` — simple over impressively complex); the testing
+DB split is the officially documented way to keep `script/test-api`
+from writing into the dev database.
+
+## 2026-09-06 — Slice 2: `#[Stateless]` required on both HTTP controllers
+
+`QuestionController` and `QuestionFeedbackController` both carry
+`#[Tempest\Router\Stateless]`.
+
+**Why:** found via a live smoke test against a real `php -S` server
+(PHPUnit's `IntegrationTest` doesn't exercise real `Sec-Fetch-*`
+headers or inspect `Set-Cookie`, so it never caught this). Without it,
+Tempest sets a session cookie on every response and its
+`PreventCrossSiteRequestsMiddleware` 403s any request lacking a
+same-origin `Sec-Fetch-Site` header — both wrong for the locked
+"no login, no session" `deck_id`-bearer auth model
+(`specs/exploration-mode.md`), and the CSRF check specifically breaks
+a legitimate cross-origin call from `frontend/`'s own origin, which
+the decoupled-`api`/`frontend` architecture explicitly allows for.
+
+## 2026-09-06 — Slice 2: no `IsDatabaseModel`, no custom active-record trait either
+
+`DatabaseQuestionRepository`/`DatabaseQuestionFeedbackRepository` call
+`query(Model::class)->select()/insert()` directly rather than using
+Tempest's `IsDatabaseModel` trait or a hand-rolled equivalent.
+
+**Why:** `IsDatabaseModel` is incompatible with `#[Uuid]` primary keys
+(Tempest's own docs) — a real constraint, not a style choice — and
+UUIDv7 primary keys were already locked in the slice spec. A small
+custom trait could reproduce the `Model::create()` convenience without
+that restriction, and was considered, but rejected: two models with a
+handful of call sites each don't justify the abstraction
+(`VALUES.md`).

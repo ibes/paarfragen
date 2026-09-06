@@ -41,3 +41,26 @@ correctly (no spec skill, no product code yet, greenfield). Reading
 before anything was built against the wrong assumption. Would help:
 whatever generates/relays these task prompts staying in sync with
 `STATUS.md`, since the router already had the right answer.
+
+## 2026-09-06 — Tempest's `query()` mistypes rows as class-strings under mago
+
+Tempest's `query()` helper (`api/vendor/tempest/framework/packages/database/src/functions.php`)
+is annotated `@template TModel` / `@param TModel $model`, but its real
+signature is `string|object $model` and every doc example calls it as
+`query(Book::class)->...`. With mago's `tempest` integration enabled,
+calling `query(QuestionModel::class)` binds `TModel` to the literal
+class-string type, not to `QuestionModel` instances — every row from
+`->select()->all()`/`->select()->get(...)` then gets typed as
+`class-string('...QuestionModel')`, so property access on a row
+(`$row->id`) is flagged `invalid-property-access`, and passing it on
+triggers `null-argument`. A `@var` override doesn't fix it (mago reports
+"no overlap" between the annotation and its own inferred type); neither
+does swapping `array_map` for `foreach`. Worked around in
+`api/src/Infrastructure/Persistence/DatabaseQuestionRepository.php`
+with `@mago-expect analysis:*` suppressions (confirmed that prefix
+works for analyzer codes, not just the `lint:*` ones already used in
+Tempest's own source) plus a comment explaining why. Whoever hits this
+again: don't re-diagnose from scratch — same root cause will recur on
+every `query(SomeModel::class)` call. Worth reporting the imprecise
+`@param TModel $model` upstream to Tempest, or patching mago's bundled
+tempest-integration stub if this repo ever vendors its own.

@@ -1,7 +1,14 @@
 # PHP (api/)
 /api/vendor/
 /api/.phpunit.cache/
+/api/.phpunit.result.cache
 /api/composer.phar
+
+# SQLite databases — Tempest's default dev DB location and the
+# dedicated testing DB (api/tests/database.testing.config.php). Never
+# committed; script/tempest migrate:up recreates the dev one.
+/api/.tempest/
+/api/tests/testing.sqlite
 
 # Mago — downloaded by script/lib/mago-install, pinned version lives in that
 # script, not in git.

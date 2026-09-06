@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Description: Runs Tempest console commands (migrate:up, key:generate, etc.) inside the api/ container.
+# Side-effects: WRITES — depends on the command (e.g. migrate:up changes the database, key:generate writes api/.env).
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+script/lib/api-php vendor/bin/tempest "$@"

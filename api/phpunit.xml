@@ -3,6 +3,9 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true">
+    <php>
+        <env name="ENVIRONMENT" value="testing"/>
+    </php>
     <testsuites>
         <testsuite name="domain">
             <directory>tests/Domain</directory>
